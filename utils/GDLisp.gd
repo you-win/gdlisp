@@ -103,7 +103,7 @@ class Exp:
 ###############################################################################
 
 func _tokenize(value: String) -> PoolStringArray:
-	return value.replace("(", " ( ").replace(")", " ) ").split(" ", false)
+	return value.replace("(", " ( ").replace(")", " ) ").strip_edges().split(" ", false)
 
 func _atom(token: String) -> Atom:
 	if token.is_valid_float():
