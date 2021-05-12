@@ -21,17 +21,41 @@ var environment: Dictionary = {
 }
 
 class EnvUtils:
-	static func plus(x, y):
-		return x + y
+	static func plus(a):
+		if a.size() < 2:
+			return 0
+
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result += i
+		return result
 	
-	static func minus(x, y):
-		return x - y
+	static func minus(a):
+		if a.size() < 2:
+			return 0
+
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result -= i
+		return result
 	
-	static func multiply(x, y):
-		return x * y
+	static func multiply(a):
+		if a.size() < 2:
+			return 0
+		
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result *= i
+		return result
 	
-	static func divide(x, y):
-		return x / y
+	static func divide(a):
+		if a.size() < 2:
+			return 0
+		
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result /= i
+		return result
 	
 	static func less_than(x, y):
 		return x < y
@@ -121,17 +145,6 @@ class Tokenizer:
 
 	func tokenize(value: String) -> Array:
 		var result: Array = []
-
-		"""
-		(print " asdfjl;asdf")
-		[(] [print] [" asdfjl;asdf"] [)]
-
-		(+ 11 11)
-		[(] [+] [11] [11] [)]
-
-		(+ xx xx)
-		[(] [+] [xx] [xx] [)]
-		"""
 		
 		# Checks for raw strings of size 1
 		if value.length() <= 2:
@@ -168,8 +181,6 @@ class Tokenizer:
 					else:
 						current_type = ParseSymbol
 						token_builder.append(c)
-
-		print(result)
 
 		return result
 
@@ -277,7 +288,7 @@ func _eval(v: Exp, env: Dictionary = environment):
 				var args: Array = []
 				for arg in list.slice(1, list.size() - 1, 1, true):
 					args.append(_eval(arg, env))
-				return procedure.call_funcv(args)
+				return procedure.call_func(args)
 
 ###############################################################################
 # Public functions                                                            #
