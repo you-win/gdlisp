@@ -106,6 +106,73 @@ class Exp:
 			Error:
 				return value.get_value()
 
+class Tokenizer:
+	enum { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation }
+
+	var last_type: int = None
+	var current_type: int = None
+
+	var token_builder: PoolStringArray = PoolStringArray()
+
+	func _build_symbol(result: Array) -> void:
+		if token_builder.size() != 0:
+			result.append(token_builder.join(""))
+			token_builder = PoolStringArray()
+
+	func tokenize(value: String) -> Array:
+		var result: Array = []
+
+		"""
+		(print " asdfjl;asdf")
+		[(] [print] [" asdfjl;asdf"] [)]
+
+		(+ 11 11)
+		[(] [+] [11] [11] [)]
+
+		(+ xx xx)
+		[(] [+] [xx] [xx] [)]
+		"""
+		
+		# Checks for raw strings of size 1
+		if value.length() <= 2:
+			return result
+
+		for i in value.length():
+			var c: String = value[i]
+			match c:
+				"(":
+					_build_symbol(result)
+					current_type = ParseExpression
+					result.append(c)
+				")":
+					_build_symbol(result)
+					current_type = ParseExpression
+					result.append(c)
+				" ":
+					if current_type == ParseQuotation:
+						token_builder.append(c)
+					else:
+						_build_symbol(result)
+						current_type = ParseSpace
+				'"':
+					if current_type == ParseSpace:
+						token_builder.append(c)
+						current_type = ParseQuotation
+					elif current_type == ParseQuotation:
+						token_builder.append(c)
+						current_type = None
+						_build_symbol(result)
+				_:
+					if current_type == ParseQuotation:
+						token_builder.append(c)
+					else:
+						current_type = ParseSymbol
+						token_builder.append(c)
+
+		print(result)
+
+		return result
+
 ###############################################################################
 # Builtin functions                                                           #
 ###############################################################################
@@ -118,8 +185,11 @@ class Exp:
 # Private functions                                                           #
 ###############################################################################
 
-func _tokenize(value: String) -> PoolStringArray:
-	return value.replace("(", " ( ").replace(")", " ) ").strip_edges().split(" ", false)
+func _tokenize(value: String) -> Array:
+	var tokenizer: Tokenizer = Tokenizer.new()
+
+	# return value.replace("(", " ( ").replace(")", " ) ").strip_edges().split(" ", false)
+	return tokenizer.tokenize(value)
 
 func _atom(token: String) -> Atom:
 	if token.is_valid_float():
