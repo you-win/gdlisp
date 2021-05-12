@@ -7,6 +7,10 @@ var environment: Dictionary = {
 	"-": funcref(EnvUtils, "minus"),
 	"*": funcref(EnvUtils, "multiply"),
 	"/": funcref(EnvUtils, "divide"),
+	"<": funcref(EnvUtils, "less_than"),
+	"<=": funcref(EnvUtils, "less_than_or_equal_to"),
+	">": funcref(EnvUtils, "greater_than"),
+	">=": funcref(EnvUtils, "greater_than_or_equal_to"),
 	
 	# Primitives
 	"true": true,
@@ -28,6 +32,18 @@ class EnvUtils:
 	
 	static func divide(x, y):
 		return x / y
+	
+	static func less_than(x, y):
+		return x < y
+	
+	static func less_than_or_equal_to(x, y):
+		return x <= y
+	
+	static func greater_than(x, y):
+		return x > y
+	
+	static func greater_than_or_equal_to(x, y):
+		return x >= y
 	
 	static func print(x):
 		print(x)
