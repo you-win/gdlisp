@@ -1,4 +1,7 @@
-extends Label
+extends MarginContainer
+
+onready var upper_label: Label = $MarginContainer/VBoxContainer/UpperLabel
+onready var lower_label: Label = $MarginContainer/VBoxContainer/LowerLabel
 
 var _is_mouse_entered: bool = false
 
@@ -13,7 +16,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if _is_mouse_entered:
 		if event.is_action_pressed("click"):
-			OS.clipboard = self.text
+			OS.clipboard = upper_label.text
 
 ###############################################################################
 # Connections                                                                 #
@@ -33,4 +36,5 @@ func _mouse_exited() -> void:
 # Public functions                                                            #
 ###############################################################################
 
-
+func get_value() -> String:
+	return upper_label.text.strip_edges()
