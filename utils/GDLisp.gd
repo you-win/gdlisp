@@ -385,7 +385,7 @@ func _eval(v: Exp, env: Dictionary = environment):
 		if list.size() == 0:
 			return "Empty S-expression"
 		match list[0].get_raw_value():
-			"if":
+			"if": # (if () () ())
 				var test = list[1]
 				var consequence = list[2]
 				var alt = list[3]
@@ -395,15 +395,17 @@ func _eval(v: Exp, env: Dictionary = environment):
 				else:
 					expression = alt
 				return _eval(expression, env)
-			"def": # Create new variable
+			"for": # (for [] ())
+				pass
+			"def": # Create new variable (def () ())
 				var symbol = list[1]
 				var expression = list[2]
 				env[symbol.get_raw_value()] = _eval(expression, env)
-			"lam": # Lambda
+			"lam": # Lambda (lam [] ())
 				pass
-			"label": # Label all nested S-expressions
+			"label": # Label all nested S-expressions (label ())
 				pass
-			"goto": # Goto specified label
+			"goto": # Goto specified label (goto ())
 				pass
 			_:
 				var procedure: FuncRef = _eval(list[0], env)
