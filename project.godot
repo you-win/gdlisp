@@ -18,10 +18,16 @@ _global_script_classes=[ {
 "class": "SaveDataUtil",
 "language": "GDScript",
 "path": "res://utils/SaveDataUtil.gd"
+}, {
+"base": "Reference",
+"class": "TestBase",
+"language": "GDScript",
+"path": "res://tests/TestBase.gd"
 } ]
 _global_script_class_icons={
 "GDLisp": "",
-"SaveDataUtil": ""
+"SaveDataUtil": "",
+"TestBase": ""
 }
 
 [application]

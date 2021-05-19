@@ -4,25 +4,41 @@ extends Reference
 class Result:
 	var _tuple: Tuple2
 
-	func _init(v0, v1 = null) -> void:
+	func _init(v0, v1) -> void:
 		_tuple = Tuple2.new(v0, v1)
 
 	func unwrap():
 		# Error
-		if _tuple.v(1):
+		if _tuple.g1():
 			AppManager.log_message("Unwrapped an error", true)
 			return null
 		else:
-			return _tuple.v(0)
+			return _tuple.g0()
 
 	func unwrap_err() -> String:
-		return _tuple.v(1)
+		return _tuple.g1()
 
 	func is_ok() -> bool:
-		return not _tuple.v(1)
+		return not _tuple.g1()
 
 	func is_err() -> bool:
 		return not is_ok()
+
+	func set_value(value) -> void:
+		_tuple.s0(value)
+
+	func set_error(value) -> void:
+		_tuple.s1(value)
+
+class Error extends Exp:
+	func _init(error_message: String, exp_type: int = Exp.Atom).(exp_type, error_message) -> void:
+		self.type = exp_type
+		self.value = error_message
+
+class None extends Exp:
+	func _init(exp_type: int = Exp.None, exp_value = null).(exp_type, exp_value) -> void:
+		self.type = exp_type
+		self.value = exp_value
 
 class Tuple2:
 	var _v0
@@ -32,31 +48,29 @@ class Tuple2:
 		_v0 = v0
 		_v1 = v1
 
-	func v(i: int):
-		match i:
-			0:
-				return _v0
-			1:
-				return _v1
+	func g0():
+		return _v0
+	
+	func g1():
+		return _v1
+	
+	func s0(value):
+		_v0 = value
 
-class Tuple3:
-	var _v0
-	var _v1
+	func s1(value):
+		_v1 = value
+
+class Tuple3 extends Tuple2:
 	var _v2
 
-	func _init(v0, v1, v2) -> void:
-		_v0 = v0
-		_v1 = v1
+	func _init(v0, v1, v2).(v0, v1) -> void:
 		_v2 = v2
 
-	func v(i: int):
-		match i:
-			0:
-				return _v0
-			1:
-				return _v1
-			2:
-				return _v2
+	func g2():
+		return _v2
+
+	func s2(value):
+		_v2 = value
 
 var environment: Dictionary = {
 	# Operators
@@ -172,7 +186,7 @@ class Env:
 		return null
 
 class Atom:
-	enum { Symbol = 0, Number }
+	enum { Sym = 0, Num, Str }
 	var type: int
 	var value
 	
@@ -181,7 +195,7 @@ class Atom:
 		value = atom_value
 	
 	func _to_string() -> String:
-		if type == Number:
+		if type == Num:
 			return str(value)
 		return value
 	
@@ -189,7 +203,7 @@ class Atom:
 		return value
 
 class Exp:
-	enum { Atom = 0, List, Error }
+	enum { None = 0, Atom, List }
 	var type: int
 	var value
 	
@@ -218,16 +232,12 @@ class Exp:
 				return (value as Array)
 			Atom:
 				return value
-			Error:
-				return value
 	
 	func get_raw_value():
 		match type:
 			List:
 				return (value as Array)
 			Atom:
-				return value.get_value()
-			Error:
 				return value.get_value()
 
 class Tokenizer:
@@ -237,7 +247,7 @@ class Tokenizer:
 
 	var token_builder: PoolStringArray = PoolStringArray()
 
-	func _build_symbol(result: Array) -> void:
+	func _build_token(result: Array) -> void:
 		if token_builder.size() != 0:
 			result.append(token_builder.join(""))
 			token_builder = PoolStringArray()
@@ -257,19 +267,19 @@ class Tokenizer:
 			match c:
 				"(":
 					paren_counter += 1
-					_build_symbol(result)
+					_build_token(result)
 					current_type = ParseExpression
 					result.append(c)
 				")":
 					paren_counter -= 1
-					_build_symbol(result)
+					_build_token(result)
 					current_type = ParseExpression
 					result.append(c)
 				" ", "\r\n", "\n", "\t":
 					if current_type == ParseQuotation:
 						token_builder.append(c)
 					else:
-						_build_symbol(result)
+						_build_token(result)
 						current_type = ParseSpace
 				'"':
 					if current_type == ParseSpace:
@@ -278,7 +288,7 @@ class Tokenizer:
 					elif current_type == ParseQuotation:
 						token_builder.append(c)
 						current_type = None
-						_build_symbol(result)
+						_build_token(result)
 				_:
 					if current_type == ParseQuotation:
 						token_builder.append(c)
@@ -293,34 +303,117 @@ class Tokenizer:
 		return Result.new(result, error)
 
 class Parser:
+	var _depth: int = 0
+	var _result: Result
+
+	func _init(result: Result) -> void:
+		_result = result
+	
 	func parse(tokens: Array) -> Exp:
-		var result: Exp = Exp.new(Exp.List, [])
+		var list_expression: Exp = Exp.new(Exp.List, [])
+
+		if _result.is_err():
+			return _error("Aborting due to previous error")
 
 		if tokens.size() == 0:
-			return Exp.new(Exp.Error, _atom("Unexpected EOF"))
+			return _error("Unexpected EOF")
 		
 		var token: String = tokens.pop_back()
 		
 		if tokens.size() == 0:
-			return Exp.new(Exp.Error, _atom("Unexpected EOF"))
+			return _error("Unexpected EOF")
 		
 		match token:
 			"(":
+				_depth += 1
 				while tokens[tokens.size() - 1] != ")":
-					result.append(parse(tokens))
+					list_expression.append(parse(tokens))
 				tokens.pop_back() # Remove last ')'
 			")":
-				return Exp.new(Exp.Error, _atom("Unexpected token"))
+				return _error("Unexpected token")
 			_:
 				return Exp.new(Exp.Atom, _atom(token))
 
-		return result
+		_depth -= 1
+		if _depth == 0:
+			_result.set_value(list_expression)
+
+		return list_expression
 	
 	func _atom(token: String) -> Atom:
-		if token.is_valid_float():
-			return Atom.new(Atom.Number, token.to_float())
+		if token.begins_with('"'):
+			return Atom.new(Atom.Str, token.substr(1, token.length() - 2))
+		elif token.is_valid_float():
+			return Atom.new(Atom.Num, token.to_float())
 		else:
-			return Atom.new(Atom.Symbol, token)
+			return Atom.new(Atom.Sym, token)
+
+	func _error(error_message: String) -> Exp:
+		_result = Result.new(null, Error.new(error_message))
+		return None.new()
+
+class Evaluator:
+	var _depth: int = 0
+	var _result: Result
+
+	func _init(result: Result) -> void:
+		_result = result
+
+	func _eval(v: Exp, env: Dictionary):
+		_depth -= 1
+		return eval(v, env)
+
+	func eval(v: Exp, env: Dictionary):
+		_depth += 1
+		if v.type == Exp.Atom:
+			match v.get_value().type:
+				Atom.Sym:
+					var raw_value = v.get_raw_value()
+					
+					if not env.has(raw_value):
+						AppManager.log_message("Undefined symbol %s" % raw_value)
+						return "Undefined symbol"
+					
+					return env[v.get_raw_value()]
+				Atom.Str:
+					return v.get_raw_value()
+				Atom.Num:
+					return v.get_raw_value()
+		elif v.type == Exp.List:
+			var list: Array = v.get_value()
+			if list.size() == 0:
+				return "Empty S-expression"
+			match list[0].get_raw_value():
+				"if": # (if () () ())
+					var test = list[1]
+					var consequence = list[2]
+					var alt = list[3]
+					var expression
+					if (eval(test, env)):
+						expression = consequence
+					else:
+						expression = alt
+					return eval(expression, env)
+				"for": # (for [] ())
+					pass
+				"def": # Create new variable (def () ())
+					var symbol = list[1]
+					var expression = list[2]
+					env[symbol.get_raw_value()] = eval(expression, env)
+				"lam": # Lambda (lam [] ())
+					pass
+				"label": # Label all nested S-expressions (label ())
+					pass
+				"goto": # Goto specified label (goto ())
+					pass
+				_:
+					var procedure = eval(list[0], env)
+					var args: Array = []
+					for arg in list.slice(1, list.size() - 1, 1, true):
+						args.append(eval(arg, env))
+					if procedure is String:
+						return
+					return procedure.call_func(args)
 
 class Procedure:
 	pass
@@ -342,77 +435,15 @@ func _tokenize(value: String) -> Result:
 
 	return tokenizer.tokenize(value)
 
-func _parse(tokens: Array) -> Exp:
-	var parser: Parser = Parser.new()
+func _parse(tokens: Array, result: Result) -> Exp:
+	var parser: Parser = Parser.new(result)
 
 	return parser.parse(tokens)
 
-func _check_converted_tokens_for_errors(converted_tokens: Exp) -> Array:
-	var result: Array = []
-	match converted_tokens.type:
-		Exp.Atom:
-			# Do nothing
-			pass
-		Exp.List:
-			for i in converted_tokens.get_value():
-				var inner_errors: Array = _check_converted_tokens_for_errors(i)
-				if inner_errors.size() > 0:
-					result.append_array(inner_errors)
-		Exp.Error:
-			result.append(converted_tokens.get_raw_value())
-	
-	return result
+func _eval(v: Exp, result: Result, env: Dictionary = environment):
+	var evaluator: Evaluator = Evaluator.new(result)
 
-func _eval(v: Exp, env: Dictionary = environment):
-	if v.type == Exp.Atom:
-		match v.get_value().type:
-			Atom.Symbol:
-				var raw_value = v.get_raw_value()
-				
-				# Check for string
-				if (raw_value.begins_with('"') and raw_value.ends_with('"')):
-					return raw_value
-				
-				if not env.has(raw_value):
-					AppManager.log_message("Undefined symbol %s" % raw_value)
-					return "Undefined symbol"
-				
-				return env[v.get_raw_value()]
-			Atom.Number:
-				return v.get_raw_value()
-	elif v.type == Exp.List:
-		var list: Array = v.get_value()
-		if list.size() == 0:
-			return "Empty S-expression"
-		match list[0].get_raw_value():
-			"if": # (if () () ())
-				var test = list[1]
-				var consequence = list[2]
-				var alt = list[3]
-				var expression
-				if (_eval(test, env)):
-					expression = consequence
-				else:
-					expression = alt
-				return _eval(expression, env)
-			"for": # (for [] ())
-				pass
-			"def": # Create new variable (def () ())
-				var symbol = list[1]
-				var expression = list[2]
-				env[symbol.get_raw_value()] = _eval(expression, env)
-			"lam": # Lambda (lam [] ())
-				pass
-			"label": # Label all nested S-expressions (label ())
-				pass
-			"goto": # Goto specified label (goto ())
-				pass
-			_:
-				var procedure: FuncRef = _eval(list[0], env)
-				var args: Array = []
-				for arg in list.slice(1, list.size() - 1, 1, true):
-					args.append(_eval(arg, env))
-				return procedure.call_func(args)
+	return evaluator.eval(v, env)
 
 ###############################################################################
 # Public functions                                                            #
@@ -421,19 +452,25 @@ func _eval(v: Exp, env: Dictionary = environment):
 func parse_string(value: String):
 	var result
 	# String
-	var tokenize_result = _tokenize(value)
+	var tokenize_result: Result = _tokenize(value)
 	if tokenize_result.is_err():
 		return tokenize_result.unwrap_err()
 	var tokens: Array = tokenize_result.unwrap()
 	
 	tokens.invert()
 
+	var parsed_tokens_array: Array = []
 	while tokens.size() != 0:
-		var parsed_tokens: Exp = _parse(tokens)
+		var parser_result: Result = Result.new(null, null)
+		_parse(tokens, parser_result)
 
-		var error = _check_converted_tokens_for_errors(parsed_tokens)
-		if error:
-			return error
-		result = _eval(parsed_tokens)
+		if parser_result.is_err():
+			return parser_result.unwrap_err()
+		
+		parsed_tokens_array.append(parser_result.unwrap())
+
+	for i in parsed_tokens_array:
+		var eval_result: Result = Result.new(null, null)
+		result = _eval(i, eval_result)
 	
 	return result

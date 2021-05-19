@@ -1,0 +1,71 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://tests/TestRunner.gd" type="Script" id=1]
+
+[node name="TestRunner" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/VBoxContainer"]
+margin_right = 1024.0
+margin_bottom = 298.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Sanity" type="Button" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
+margin_right = 201.0
+margin_bottom = 298.0
+size_flags_horizontal = 3
+text = "Sanity"
+
+[node name="Tokenizer" type="Button" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
+margin_left = 205.0
+margin_right = 407.0
+margin_bottom = 298.0
+size_flags_horizontal = 3
+text = "Tokenizer"
+
+[node name="Parser" type="Button" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
+margin_left = 411.0
+margin_right = 612.0
+margin_bottom = 298.0
+size_flags_horizontal = 3
+text = "Parser"
+
+[node name="Evaluator" type="Button" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
+margin_left = 616.0
+margin_right = 818.0
+margin_bottom = 298.0
+size_flags_horizontal = 3
+text = "Evaluator"
+
+[node name="EndToEnd" type="Button" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
+margin_left = 822.0
+margin_right = 1024.0
+margin_bottom = 298.0
+size_flags_horizontal = 3
+text = "End-to-end"
+
+[node name="RunAll" type="Button" parent="CanvasLayer/VBoxContainer"]
+margin_top = 302.0
+margin_right = 1024.0
+margin_bottom = 600.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "Run all"
