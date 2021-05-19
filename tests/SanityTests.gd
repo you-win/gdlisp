@@ -39,7 +39,7 @@ func test_simple_parser() -> void:
 	var input: Array = ['(', 'print', '"hello world"', ')']
 	input.invert()
 	
-	var result := _create_empty_result()
+	var result = _create_empty_result()
 	var parser := GDLisp.Parser.new(result)
 	
 	var expression := parser.parse(input)
@@ -65,16 +65,18 @@ func test_simple_evaluator() -> void:
 	input.append(_create_expression_from_atom(_create_atom("print")))
 	input.append(_create_expression_from_atom(_create_atom('"hello world"')))
 	
-	var result := _create_empty_result()
+	var result = _create_empty_result()
 	var evaluator := GDLisp.Evaluator.new(result)
 
 	var eval_result = evaluator.eval(input, gdlisp.environment)
 
 	assert(result.is_ok())
 	
-	assert(eval_result == "hello world")
+	var unwrapped_results = result.unwrap()
 	
-	print(eval_result)
+	assert(unwrapped_results == "hello world")
+	
+	print(unwrapped_results)
 
 ###############################################################################
 # GDLisp                                                                      #

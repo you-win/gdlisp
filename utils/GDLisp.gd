@@ -412,8 +412,10 @@ class Evaluator:
 					for arg in list.slice(1, list.size() - 1, 1, true):
 						args.append(eval(arg, env))
 					if procedure is String:
+						_result.set_error("Invalid procedure")
 						return
-					return procedure.call_func(args)
+					_result.set_value(procedure.call_func(args))
+					return
 
 class Procedure:
 	pass
@@ -450,7 +452,7 @@ func _eval(v: Exp, result: Result, env: Dictionary = environment):
 ###############################################################################
 
 func parse_string(value: String):
-	var result
+	var result: Array = []
 	# String
 	var tokenize_result: Result = _tokenize(value)
 	if tokenize_result.is_err():
@@ -471,6 +473,11 @@ func parse_string(value: String):
 
 	for i in parsed_tokens_array:
 		var eval_result: Result = Result.new(null, null)
-		result = _eval(i, eval_result)
+		_eval(i, eval_result)
+
+		if eval_result.is_err():
+			return eval_result.unwrap_err()
+
+		result.append(eval_result.unwrap())
 	
 	return result
