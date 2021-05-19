@@ -20,6 +20,26 @@ var _current_input_state: String = ""
 ###############################################################################
 
 func _ready() -> void:
+	if OS.is_debug_build():
+		var oc0: MarginContainer = OUTPUT_CONTAINER.instance()
+		output.call_deferred("add_child", oc0)
+		
+		yield(oc0, "ready")
+		
+		oc0.upper_label.text = "Running sanity tests"
+		oc0.lower_label.text = "uwu"
+		
+		var sanity_test: TestBase = load("res://tests/SanityTests.gd").new()
+		sanity_test.run_tests()
+		
+		var oc1: MarginContainer = OUTPUT_CONTAINER.instance()
+		output.call_deferred("add_child", oc1)
+		
+		yield(oc1, "ready")
+		
+		oc1.upper_label.text = "Finished sanity tests"
+		oc1.lower_label.text = "All passed (clearly)"
+	
 	input.grab_focus()
 
 func _input(event: InputEvent) -> void:
@@ -30,6 +50,7 @@ func _input(event: InputEvent) -> void:
 	elif _is_super_pressed:
 		if event.is_action_pressed("send_input"):
 			_send_input()
+			get_tree().set_input_as_handled()
 		elif event.is_action_pressed("ui_up"):
 			_put_history_input(-1)
 		elif event.is_action_pressed("ui_down"):
