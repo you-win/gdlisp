@@ -72,7 +72,47 @@ class Tuple3 extends Tuple2:
 	func s2(value):
 		_v2 = value
 
-var environment: Dictionary = {
+class Env:
+	var _inner: Dictionary # This scope
+	var _outer: Env # Outer scope
+
+	func _init(outer: Env = null, param_names: Array = [], param_values: Array = []) -> void:
+		_inner = {}
+		if outer: # If null, then there is probably no global scope
+			_outer = outer
+
+		# params and call_args must match up
+		if param_names.size() != param_values.size():
+			return
+		
+		for i in param_names.size():
+			_inner[param_names[i]] = param_values[i]
+
+	func find(key: String):
+		if key in _inner:
+			return _inner[key]
+		elif _outer:
+			return _outer.find(key)
+
+		return null
+
+		# return Error.new("Attempted to reference non-existent value")
+
+	func add(key: String, value) -> void:
+		_inner[key] = value
+
+	func remove(key: String) -> bool:
+		return _inner.erase(key)
+
+	func set_existing_value(key: String, value) -> bool:
+		if key in _inner:
+			_inner[key] = value
+			return true
+		elif _outer:
+			return _outer.set_existing_value(key, value)
+		return false
+
+var global_environment_dictionary: Dictionary = {
 	# Operators
 	"+": funcref(EnvUtils, "plus"),
 	"-": funcref(EnvUtils, "minus"),
@@ -91,6 +131,8 @@ var environment: Dictionary = {
 	# Builtin functions
 	"print": funcref(EnvUtils, "print")
 }
+
+var global_env: Env = Env.new()
 
 class EnvUtils:
 	static func plus(a: Array):
@@ -161,28 +203,6 @@ class EnvUtils:
 		for i in a:
 			result += str(i)
 		print(result)
-
-class Env:
-	var _inner: Dictionary
-	var _outer: Dictionary
-
-	func _init(params: Array, call_args: Array, outer: Dictionary) -> void:
-		_outer = outer
-
-		# params and call_args must match up
-		if params.size() != call_args.size():
-			return
-		
-		for i in params.size():
-			_inner[params[i]] = call_args[i]
-
-	func find(value: String):
-		if value in _inner:
-			return _inner
-		elif value in _outer:
-			return _outer
-		
-		return null
 
 class Atom:
 	enum { Sym = 0, Num, Str }
@@ -369,7 +389,7 @@ class Evaluator:
 	func _init(result: Result) -> void:
 		_result = result
 
-	func eval(v: Exp, env: Dictionary):
+	func eval(v: Exp, env: Env):
 		var eval_value
 		_depth += 1
 		
@@ -377,14 +397,15 @@ class Evaluator:
 			match v.get_value().type:
 				Atom.Sym:
 					var raw_value = v.get_raw_value()
+					var env_value = env.find(raw_value)
 					
-					if not env.has(raw_value):
+					if env_value == null:
 						AppManager.log_message("Undefined symbol %s" % raw_value)
 						eval_value = "Undefined symbol"
 						_result.set_error(eval_value)
 						continue
 					
-					eval_value = env[v.get_raw_value()]
+					eval_value = env_value
 				Atom.Str:
 					eval_value = v.get_raw_value()
 				Atom.Num:
@@ -394,6 +415,9 @@ class Evaluator:
 			if list.size() != 0:
 				match list[0].get_raw_value():
 					"if": # (if () () ())
+						# TODO maybe change this to be varargs?
+						if not _has_exact_args(list.size(), 4, "if"):
+							return
 						var test = list[1]
 						var consequence = list[2]
 						var alt = list[3]
@@ -402,21 +426,37 @@ class Evaluator:
 							expression = consequence
 						else:
 							expression = alt
-						eval_value = eval(expression, env)
+						eval_value = eval(expression, Env.new(env))
 					"do":
+						if not _has_enough_args(list.size(), 2, "do"):
+							return
+						var inner_env = Env.new(env)
 						for s in list.slice(1, list.size()):
-							eval(s, env)
+							eval(s, inner_env)
 					"while": # (while (test) ())
+						if not _has_enough_args(list.size(), 3, "while"):
+							return
 						var test = list[1]
 						while eval(test, env):
 							for s in list.slice(2, list.size()):
-								eval(s, env)
+								eval(s, Env.new(env))
 					"for": # (for [] ())
 						pass
-					"def": # Create new variable (def () ())
+					"def": # Create new variable in the current scope (def () ())
+						if not _has_exact_args(list.size(), 3, "def"):
+							return
 						var symbol = list[1]
 						var expression = list[2]
-						env[symbol.get_raw_value()] = eval(expression, env)
+						env.add(symbol.get_raw_value(), eval(expression, Env.new(env)))
+					"=": # Sets a variable in the current or outer scope
+						if not _has_exact_args(list.size(), 3, "="):
+							return
+						var symbol = list[1]
+						var expression = list[2]
+						if not env.set_existing_value(symbol.get_raw_value(), eval(expression, Env.new(env))):
+							eval_value = "Tried to set a non-existent variable %s" % symbol
+							_result.set_error(eval_value)
+							return
 					"lam": # Lambda (lam [] ())
 						pass
 					"label": # Label all nested S-expressions (label ())
@@ -424,17 +464,18 @@ class Evaluator:
 					"goto": # Goto specified label (goto ())
 						pass
 					_:
-						var procedure = eval(list[0], env)
+						var procedure = eval(list[0], Env.new(env))
 						if not procedure is FuncRef:
 							eval_value = procedure
+							# NOTE this is the catch-all match, so this continue is okay
 							continue
 						var args: Array = []
 						for arg in list.slice(1, list.size() - 1, 1, true):
-							args.append(eval(arg, env))
+							args.append(eval(arg, Env.new(env)))
 						if procedure is String:
 							eval_value = "Invalid procedure: %s" % procedure
 							_result.set_error(eval_value)
-							continue
+							return
 						eval_value = procedure.call_func(args)
 		
 		_depth -= 1
@@ -444,12 +485,28 @@ class Evaluator:
 		
 		return eval_value
 
+	func _has_exact_args(list_size: int, expected_size: int, statement_type: String) -> bool:
+		if list_size != expected_size:
+			_result.set_error("Unexpected amount of arguments (%s vs %s) for %s" % [list_size, expected_size, statement_type])
+			return false
+		return true
+	
+	func _has_enough_args(list_size: int, minimum_size: int, statement_type: String) -> bool:
+		if list_size < minimum_size:
+			_result.set_error("Insufficient arguments for %s" % statement_type)
+			return false
+		return true
+
 class Procedure:
 	pass
 
 ###############################################################################
 # Builtin functions                                                           #
 ###############################################################################
+
+func _init() -> void:
+	# NOTE we don't duplicate here since it doesn't really matter + it's a global
+	global_env._inner = global_environment_dictionary
 
 ###############################################################################
 # Connections                                                                 #
@@ -469,10 +526,10 @@ func _parse(tokens: Array, result: Result) -> Exp:
 
 	return parser.parse(tokens)
 
-func _eval(v: Exp, result: Result, env: Dictionary = environment):
+func _eval(v: Exp, result: Result, eval_env: Env = global_env):
 	var evaluator: Evaluator = Evaluator.new(result)
 
-	return evaluator.eval(v, env)
+	return evaluator.eval(v, eval_env)
 
 ###############################################################################
 # Public functions                                                            #

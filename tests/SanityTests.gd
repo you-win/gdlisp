@@ -55,7 +55,7 @@ func test_simple_evaluator() -> void:
 	var result = _create_empty_result()
 	var evaluator := GDLisp.Evaluator.new(result)
 
-	var eval_result = evaluator.eval(input, gdlisp.environment)
+	var eval_result = evaluator.eval(input, gdlisp.global_env)
 
 	assert(result.is_ok())
 	
@@ -96,15 +96,15 @@ func test_setting_variables() -> void:
 	print(output)
 
 func test_while_loop() -> void:
-	var output = GDLisp.new().parse_string('(def x 0)(while (< x 5)(print x)(def x (+ x 1)))(x)')
+	var output = GDLisp.new().parse_string('(def x 0)(while (< x 5)(print x)(= x (+ x 1)))(x)')
 
 	assert(output[2] == 5)
 
 	print(output)
 
 func test_do() -> void:
-	var output = GDLisp.new().parse_string('(do (def x 0) (def x (+ x 1)) (def x -10))(x)')
+	var output = GDLisp.new().parse_string('(def x 100)(do (def x 0) (= x (+ x 1)) (print x) (def x -10) (print x))(x)')
 	
-	assert(output[1] == -10)
+	assert(output[2] == 100)
 	
 	print(output)
