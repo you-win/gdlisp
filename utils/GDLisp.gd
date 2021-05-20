@@ -297,10 +297,14 @@ class Tokenizer:
 					result.append(c)
 				"[":
 					bracket_counter += 1
+					_build_token(result)
 					current_type = ParseBracket
+					result.append(c)
 				"]":
 					bracket_counter -= 1
+					_build_token(result)
 					current_type = None
+					result.append(c)
 				" ", "\r\n", "\n", "\t":
 					if current_type == ParseQuotation:
 						token_builder.append(c)
@@ -360,7 +364,15 @@ class Parser:
 					list_expression.append(parse(tokens))
 				tokens.pop_back() # Remove last ')'
 			")":
-				return _error("Unexpected token")
+				return _error("Unexpected )")
+			"[":
+				_depth += 1
+				list_expression.append(Exp.new(Exp.Atom, _atom("list")))
+				while tokens[tokens.size() - 1] != "]":
+					list_expression.append(parse(tokens))
+				tokens.pop_back() # Remove last ']'
+			"]":
+				return _error("Unexpected ]")
 			_:
 				return Exp.new(Exp.Atom, _atom(token))
 
@@ -457,15 +469,38 @@ class Evaluator:
 							eval_value = "Tried to set a non-existent variable %s" % symbol
 							_result.set_error(eval_value)
 							return
+					"list":
+						eval_value = []
+						if list.size() >= 2:
+							for item in list.slice(1, list.size() - 1, true):
+								eval_value.append(eval(item, Env.new(env)))
 					"lam": # Lambda (lam [] ())
-						pass
+						if not _has_enough_args(list.size(), 3, "lam"):
+							return
+						var arg_names = list[1].get_raw_value()
+						if not arg_names is Array:
+							eval_value = "lam expects a list of parameter names"
+							_result.set_error(eval_value)
+						if arg_names.size() == 1: # Can never be 0, so fail if it somehow is
+							arg_names = []
+						else:
+							arg_names = arg_names.slice(1, arg_names.size() - 1)
+							for i in arg_names.size():
+								arg_names[i] = arg_names[i].get_raw_value()
+
+						var expressions = Exp.new(Exp.List, [])
+						expressions.append(Exp.new(Exp.Atom, Atom.new(Atom.Sym, "do")))
+						for expression in list.slice(2, list.size() - 1, true):
+							expressions.append(expression)
+
+						eval_value = Procedure.new(arg_names, expressions, Env.new(env), self)
 					"label": # Label all nested S-expressions (label ())
 						pass
 					"goto": # Goto specified label (goto ())
 						pass
 					_:
 						var procedure = eval(list[0], Env.new(env))
-						if not procedure is FuncRef:
+						if (not procedure is FuncRef and not procedure is Procedure):
 							eval_value = procedure
 							# NOTE this is the catch-all match, so this continue is okay
 							continue
@@ -498,7 +533,22 @@ class Evaluator:
 		return true
 
 class Procedure:
-	pass
+	var stored_arg_names: Array
+	var stored_expressions: Exp
+	var stored_env: Env
+	var evaluator: Evaluator
+
+	func _init(arg_names: Array, expressions: Exp, env: Env, eval: Evaluator) -> void:
+		stored_arg_names = arg_names
+		stored_expressions = expressions
+		stored_env = env
+		evaluator = eval
+
+	func call_func(arg_values: Array):
+		for i in stored_arg_names.size():
+			stored_env.add(stored_arg_names[i], arg_values[i])
+		
+		evaluator.eval(stored_expressions, stored_env)
 
 ###############################################################################
 # Builtin functions                                                           #
