@@ -398,8 +398,9 @@ class Evaluator:
 	var _depth: int = 0
 	var _result: Result
 
-	func _init(result: Result) -> void:
+	func _init(result: Result, env: Env) -> void:
 		_result = result
+		env.add("evaluator", self)
 
 	func eval(v: Exp, env: Env):
 		var eval_value
@@ -439,7 +440,7 @@ class Evaluator:
 						else:
 							expression = alt
 						eval_value = eval(expression, Env.new(env))
-					"do":
+					"do": # (do () ...)
 						if not _has_enough_args(list.size(), 2, "do"):
 							return
 						var inner_env = Env.new(env)
@@ -460,7 +461,7 @@ class Evaluator:
 						var symbol = list[1]
 						var expression = list[2]
 						env.add(symbol.get_raw_value(), eval(expression, Env.new(env)))
-					"=": # Sets a variable in the current or outer scope
+					"=": # Sets a variable in the current or outer scope (= () ())
 						if not _has_exact_args(list.size(), 3, "="):
 							return
 						var symbol = list[1]
@@ -469,7 +470,7 @@ class Evaluator:
 							eval_value = "Tried to set a non-existent variable %s" % symbol
 							_result.set_error(eval_value)
 							return
-					"list":
+					"list": # Returns a Godot array (list () ...)
 						eval_value = []
 						if list.size() >= 2:
 							for item in list.slice(1, list.size() - 1, true):
@@ -493,7 +494,7 @@ class Evaluator:
 						for expression in list.slice(2, list.size() - 1, true):
 							expressions.append(expression)
 
-						eval_value = Procedure.new(arg_names, expressions, Env.new(env), self)
+						eval_value = Procedure.new(arg_names, expressions, Env.new(env), weakref(self))
 					"label": # Label all nested S-expressions (label ())
 						pass
 					"goto": # Goto specified label (goto ())
@@ -536,9 +537,9 @@ class Procedure:
 	var stored_arg_names: Array
 	var stored_expressions: Exp
 	var stored_env: Env
-	var evaluator: Evaluator
+	var evaluator: WeakRef
 
-	func _init(arg_names: Array, expressions: Exp, env: Env, eval: Evaluator) -> void:
+	func _init(arg_names: Array, expressions: Exp, env: Env, eval: WeakRef) -> void:
 		stored_arg_names = arg_names
 		stored_expressions = expressions
 		stored_env = env
@@ -548,7 +549,7 @@ class Procedure:
 		for i in stored_arg_names.size():
 			stored_env.add(stored_arg_names[i], arg_values[i])
 		
-		evaluator.eval(stored_expressions, stored_env)
+		stored_env.find("evaluator").eval(stored_expressions, stored_env)
 
 ###############################################################################
 # Builtin functions                                                           #
@@ -577,7 +578,7 @@ func _parse(tokens: Array, result: Result) -> Exp:
 	return parser.parse(tokens)
 
 func _eval(v: Exp, result: Result, eval_env: Env = global_env):
-	var evaluator: Evaluator = Evaluator.new(result)
+	var evaluator: Evaluator = Evaluator.new(result, eval_env)
 
 	return evaluator.eval(v, eval_env)
 

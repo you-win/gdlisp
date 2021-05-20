@@ -53,7 +53,7 @@ func test_simple_evaluator() -> void:
 	input.append(_create_expression_from_atom(_create_atom('1')))
 	
 	var result = _create_empty_result()
-	var evaluator := GDLisp.Evaluator.new(result)
+	var evaluator := GDLisp.Evaluator.new(result, gdlisp.global_env)
 
 	var eval_result = evaluator.eval(input, gdlisp.global_env)
 
