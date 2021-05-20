@@ -161,7 +161,6 @@ class EnvUtils:
 		for i in a:
 			result += str(i)
 		print(result)
-		return result
 
 class Env:
 	var _inner: Dictionary
@@ -241,7 +240,7 @@ class Exp:
 				return value.get_value()
 
 class Tokenizer:
-	enum { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation }
+	enum { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation, ParseBracket }
 
 	var current_type: int = None
 
@@ -257,6 +256,7 @@ class Tokenizer:
 		var error
 
 		var paren_counter: int = 0
+		var bracket_counter: int = 0
 		
 		# Checks for raw strings of size 1
 		if value.length() <= 2:
@@ -273,8 +273,14 @@ class Tokenizer:
 				")":
 					paren_counter -= 1
 					_build_token(result)
-					current_type = ParseExpression
+					current_type = None
 					result.append(c)
+				"[":
+					bracket_counter += 1
+					current_type = ParseBracket
+				"]":
+					bracket_counter -= 1
+					current_type = None
 				" ", "\r\n", "\n", "\t":
 					if current_type == ParseQuotation:
 						token_builder.append(c)
@@ -299,6 +305,10 @@ class Tokenizer:
 		if paren_counter != 0:
 			result.clear()
 			error = "Mismatched parens"
+
+		if bracket_counter != 0:
+			result.clear()
+			error = "Mismatched brackets"
 
 		return Result.new(result, error)
 
@@ -359,12 +369,10 @@ class Evaluator:
 	func _init(result: Result) -> void:
 		_result = result
 
-	func _eval(v: Exp, env: Dictionary):
-		_depth -= 1
-		return eval(v, env)
-
 	func eval(v: Exp, env: Dictionary):
+		var eval_value
 		_depth += 1
+		
 		if v.type == Exp.Atom:
 			match v.get_value().type:
 				Atom.Sym:
@@ -372,50 +380,69 @@ class Evaluator:
 					
 					if not env.has(raw_value):
 						AppManager.log_message("Undefined symbol %s" % raw_value)
-						return "Undefined symbol"
+						eval_value = "Undefined symbol"
+						_result.set_error(eval_value)
+						continue
 					
-					return env[v.get_raw_value()]
+					eval_value = env[v.get_raw_value()]
 				Atom.Str:
-					return v.get_raw_value()
+					eval_value = v.get_raw_value()
 				Atom.Num:
-					return v.get_raw_value()
+					eval_value = v.get_raw_value()
 		elif v.type == Exp.List:
 			var list: Array = v.get_value()
-			if list.size() == 0:
-				return "Empty S-expression"
-			match list[0].get_raw_value():
-				"if": # (if () () ())
-					var test = list[1]
-					var consequence = list[2]
-					var alt = list[3]
-					var expression
-					if (eval(test, env)):
-						expression = consequence
-					else:
-						expression = alt
-					return eval(expression, env)
-				"for": # (for [] ())
-					pass
-				"def": # Create new variable (def () ())
-					var symbol = list[1]
-					var expression = list[2]
-					env[symbol.get_raw_value()] = eval(expression, env)
-				"lam": # Lambda (lam [] ())
-					pass
-				"label": # Label all nested S-expressions (label ())
-					pass
-				"goto": # Goto specified label (goto ())
-					pass
-				_:
-					var procedure = eval(list[0], env)
-					var args: Array = []
-					for arg in list.slice(1, list.size() - 1, 1, true):
-						args.append(eval(arg, env))
-					if procedure is String:
-						_result.set_error("Invalid procedure")
-						return
-					_result.set_value(procedure.call_func(args))
-					return
+			if list.size() != 0:
+				match list[0].get_raw_value():
+					"if": # (if () () ())
+						var test = list[1]
+						var consequence = list[2]
+						var alt = list[3]
+						var expression
+						if (eval(test, env)):
+							expression = consequence
+						else:
+							expression = alt
+						eval_value = eval(expression, env)
+					"do":
+						for s in list.slice(1, list.size()):
+							eval(s, env)
+					"while": # (while (test) ())
+						var test = list[1]
+						while eval(test, env):
+							for s in list.slice(2, list.size()):
+								eval(s, env)
+					"for": # (for [] ())
+						pass
+					"def": # Create new variable (def () ())
+						var symbol = list[1]
+						var expression = list[2]
+						env[symbol.get_raw_value()] = eval(expression, env)
+					"lam": # Lambda (lam [] ())
+						pass
+					"label": # Label all nested S-expressions (label ())
+						pass
+					"goto": # Goto specified label (goto ())
+						pass
+					_:
+						var procedure = eval(list[0], env)
+						if not procedure is FuncRef:
+							eval_value = procedure
+							continue
+						var args: Array = []
+						for arg in list.slice(1, list.size() - 1, 1, true):
+							args.append(eval(arg, env))
+						if procedure is String:
+							eval_value = "Invalid procedure: %s" % procedure
+							_result.set_error(eval_value)
+							continue
+						eval_value = procedure.call_func(args)
+		
+		_depth -= 1
+		
+		if _depth == 0:
+			_result.set_value(eval_value)
+		
+		return eval_value
 
 class Procedure:
 	pass

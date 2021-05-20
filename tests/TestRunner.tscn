@@ -31,6 +31,7 @@ __meta__ = {
 [node name="Sanity" type="Button" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
 margin_right = 201.0
 margin_bottom = 298.0
+focus_mode = 0
 size_flags_horizontal = 3
 text = "Sanity"
 
@@ -38,6 +39,7 @@ text = "Sanity"
 margin_left = 205.0
 margin_right = 407.0
 margin_bottom = 298.0
+focus_mode = 0
 size_flags_horizontal = 3
 text = "Tokenizer"
 
@@ -45,6 +47,7 @@ text = "Tokenizer"
 margin_left = 411.0
 margin_right = 612.0
 margin_bottom = 298.0
+focus_mode = 0
 size_flags_horizontal = 3
 text = "Parser"
 
@@ -52,6 +55,7 @@ text = "Parser"
 margin_left = 616.0
 margin_right = 818.0
 margin_bottom = 298.0
+focus_mode = 0
 size_flags_horizontal = 3
 text = "Evaluator"
 
@@ -59,6 +63,7 @@ text = "Evaluator"
 margin_left = 822.0
 margin_right = 1024.0
 margin_bottom = 298.0
+focus_mode = 0
 size_flags_horizontal = 3
 text = "End-to-end"
 
@@ -66,6 +71,7 @@ text = "End-to-end"
 margin_top = 302.0
 margin_right = 1024.0
 margin_bottom = 600.0
+focus_mode = 0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "Run all"

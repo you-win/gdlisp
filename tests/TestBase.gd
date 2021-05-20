@@ -32,4 +32,15 @@ func _create_expression_from_atom(atom: GDLisp.Atom) -> GDLisp.Exp:
 ###############################################################################
 
 func run_tests() -> void:
-	AppManager.log_message("Not implemented", true)
+	var test_methods: Array = []
+	var methods: Array = get_method_list()
+	
+	for method in methods:
+		var method_name: String = method["name"]
+		if method_name.left(4).to_lower() == "test":
+			test_methods.append(method_name)
+	
+	print("Running %s tests" % test_methods.size())
+	for method in test_methods:
+		print("\n%s" % method)
+		call(method)

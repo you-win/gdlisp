@@ -1,19 +1,5 @@
 extends TestBase
 
-func run_tests() -> void:
-	var test_methods: Array = []
-	var methods: Array = get_method_list()
-	
-	for method in methods:
-		var method_name: String = method["name"]
-		if method_name.left(4).to_lower() == "test":
-			test_methods.append(method_name)
-	
-	print("Running %s tests" % test_methods.size())
-	for method in test_methods:
-		print("\n%s" % method)
-		call(method)
-
 ###############################################################################
 # Tokenizer                                                                   #
 ###############################################################################
@@ -62,8 +48,9 @@ func test_simple_evaluator() -> void:
 	var gdlisp := GDLisp.new()
 
 	var input := GDLisp.Exp.new(GDLisp.Exp.List, [])
-	input.append(_create_expression_from_atom(_create_atom("print")))
-	input.append(_create_expression_from_atom(_create_atom('"hello world"')))
+	input.append(_create_expression_from_atom(_create_atom("+")))
+	input.append(_create_expression_from_atom(_create_atom('1')))
+	input.append(_create_expression_from_atom(_create_atom('1')))
 	
 	var result = _create_empty_result()
 	var evaluator := GDLisp.Evaluator.new(result)
@@ -74,7 +61,7 @@ func test_simple_evaluator() -> void:
 	
 	var unwrapped_results = result.unwrap()
 	
-	assert(unwrapped_results == "hello world")
+	assert(unwrapped_results == 2)
 	
 	print(unwrapped_results)
 
@@ -89,5 +76,35 @@ func test_hello_world() -> void:
 
 func test_simple_addition() -> void:
 	var output = GDLisp.new().parse_string('(+ 1 1)')
+
+	assert(output[0] == 2)
+	
+	print(output)
+
+func test_nested_simple_addition() -> void:
+	var output = GDLisp.new().parse_string('(+ 1 (+ 1 (+ 1 1)))')
+
+	assert(output[0] == 4)
+
+	print(output)
+
+func test_setting_variables() -> void:
+	var output = GDLisp.new().parse_string('(def x 1) (+ 1 x)')
+
+	assert(output[1] == 2)
+
+	print(output)
+
+func test_while_loop() -> void:
+	var output = GDLisp.new().parse_string('(def x 0)(while (< x 5)(print x)(def x (+ x 1)))(x)')
+
+	assert(output[2] == 5)
+
+	print(output)
+
+func test_do() -> void:
+	var output = GDLisp.new().parse_string('(do (def x 0) (def x (+ x 1)) (def x -10))(x)')
+	
+	assert(output[1] == -10)
 	
 	print(output)
