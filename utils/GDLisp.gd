@@ -260,7 +260,7 @@ class Exp:
 				return value.get_value()
 
 class Tokenizer:
-	enum { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation, ParseBracket }
+	enum { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation, ParseBracket, ParseEscapeCharacter }
 
 	var current_type: int = None
 
@@ -276,7 +276,8 @@ class Tokenizer:
 		var error
 
 		var paren_counter: int = 0
-		var bracket_counter: int = 0
+		var square_bracket_counter: int = 0
+		var curly_bracket_counter: int = 0
 		
 		# Checks for raw strings of size 1
 		if value.length() <= 2:
@@ -296,12 +297,22 @@ class Tokenizer:
 					current_type = None
 					result.append(c)
 				"[":
-					bracket_counter += 1
+					square_bracket_counter += 1
 					_build_token(result)
 					current_type = ParseBracket
 					result.append(c)
 				"]":
-					bracket_counter -= 1
+					square_bracket_counter -= 1
+					_build_token(result)
+					current_type = None
+					result.append(c)
+				"{":
+					curly_bracket_counter += 1
+					_build_token(result)
+					current_type = ParseBracket
+					result.append(c)
+				"}":
+					curly_bracket_counter -= 1
 					_build_token(result)
 					current_type = None
 					result.append(c)
@@ -312,13 +323,16 @@ class Tokenizer:
 						_build_token(result)
 						current_type = ParseSpace
 				'"':
-					if current_type == ParseSpace:
+					if (current_type == ParseSpace or current_type == ParseEscapeCharacter):
 						token_builder.append(c)
 						current_type = ParseQuotation
 					elif current_type == ParseQuotation:
 						token_builder.append(c)
 						current_type = None
 						_build_token(result)
+				"\\":
+					if current_type == ParseQuotation:
+						current_type = ParseEscapeCharacter
 				_:
 					if current_type == ParseQuotation:
 						token_builder.append(c)
@@ -330,9 +344,13 @@ class Tokenizer:
 			result.clear()
 			error = "Mismatched parens"
 
-		if bracket_counter != 0:
+		if square_bracket_counter != 0:
 			result.clear()
-			error = "Mismatched brackets"
+			error = "Mismatched square brackets"
+
+		if curly_bracket_counter != 0:
+			result.clear()
+			error = "Mismatched curly brackets"
 
 		return Result.new(result, error)
 
@@ -373,6 +391,14 @@ class Parser:
 				tokens.pop_back() # Remove last ']'
 			"]":
 				return _error("Unexpected ]")
+			"{":
+				_depth += 1
+				list_expression.append(Exp.new(Exp.Atom, _atom("table")))
+				while tokens[tokens.size() - 1] != "}":
+					list_expression.append(parse(tokens))
+				tokens.pop_back() # Remove last '}'
+			"}":
+				return _error("Unexpected }")
 			_:
 				return Exp.new(Exp.Atom, _atom(token))
 
@@ -400,7 +426,7 @@ class Evaluator:
 
 	func _init(result: Result, env: Env) -> void:
 		_result = result
-		env.add("evaluator", self)
+		env.add("EVALUATOR", self)
 
 	func eval(v: Exp, env: Env):
 		var eval_value
@@ -439,20 +465,20 @@ class Evaluator:
 							expression = consequence
 						else:
 							expression = alt
-						eval_value = eval(expression, Env.new(env))
+						eval_value = eval(expression, env)
 					"do": # (do () ...)
 						if not _has_enough_args(list.size(), 2, "do"):
 							return
 						var inner_env = Env.new(env)
 						for s in list.slice(1, list.size()):
-							eval(s, inner_env)
+							eval_value = eval(s, inner_env)
 					"while": # (while (test) ())
 						if not _has_enough_args(list.size(), 3, "while"):
 							return
 						var test = list[1]
 						while eval(test, env):
 							for s in list.slice(2, list.size()):
-								eval(s, Env.new(env))
+								eval(s, env)
 					"for": # (for [] ())
 						pass
 					"def": # Create new variable in the current scope (def () ())
@@ -460,13 +486,13 @@ class Evaluator:
 							return
 						var symbol = list[1]
 						var expression = list[2]
-						env.add(symbol.get_raw_value(), eval(expression, Env.new(env)))
+						env.add(symbol.get_raw_value(), eval(expression, env))
 					"=": # Sets a variable in the current or outer scope (= () ())
 						if not _has_exact_args(list.size(), 3, "="):
 							return
 						var symbol = list[1]
 						var expression = list[2]
-						if not env.set_existing_value(symbol.get_raw_value(), eval(expression, Env.new(env))):
+						if not env.set_existing_value(symbol.get_raw_value(), eval(expression, env)):
 							eval_value = "Tried to set a non-existent variable %s" % symbol
 							_result.set_error(eval_value)
 							return
@@ -474,7 +500,19 @@ class Evaluator:
 						eval_value = []
 						if list.size() >= 2:
 							for item in list.slice(1, list.size() - 1, true):
-								eval_value.append(eval(item, Env.new(env)))
+								eval_value.append(eval(item, env))
+					"table":
+						eval_value = {}
+						if list.size() >= 2:
+							# Check for equal pairs
+							if not (list.size() - 1) % 2 == 0:
+								eval_value = "Unbalanced key/value pairs for table"
+								_result.set_error(eval_value)
+								return
+							var idx: int = 1
+							while idx < list.size():
+								eval_value[eval(list[idx], env)] = eval(list[idx + 1], env)
+								idx += 2
 					"lam": # Lambda (lam [] ())
 						if not _has_enough_args(list.size(), 3, "lam"):
 							return
@@ -482,7 +520,7 @@ class Evaluator:
 						if not arg_names is Array:
 							eval_value = "lam expects a list of parameter names"
 							_result.set_error(eval_value)
-						if arg_names.size() == 1: # Can never be 0, so fail if it somehow is
+						if arg_names.size() == 1: # Can never be 0, so let us crash if it somehow is
 							arg_names = []
 						else:
 							arg_names = arg_names.slice(1, arg_names.size() - 1)
@@ -495,19 +533,23 @@ class Evaluator:
 							expressions.append(expression)
 
 						eval_value = Procedure.new(arg_names, expressions, Env.new(env), weakref(self))
+					"macro": # (macro [] ())
+						if not _has_enough_args(list.size(), 3, "macro"):
+							return
+						pass
 					"label": # Label all nested S-expressions (label ())
 						pass
 					"goto": # Goto specified label (goto ())
 						pass
 					_:
-						var procedure = eval(list[0], Env.new(env))
+						var procedure = eval(list[0], env)
 						if (not procedure is FuncRef and not procedure is Procedure):
 							eval_value = procedure
 							# NOTE this is the catch-all match, so this continue is okay
 							continue
 						var args: Array = []
 						for arg in list.slice(1, list.size() - 1, 1, true):
-							args.append(eval(arg, Env.new(env)))
+							args.append(eval(arg, env))
 						if procedure is String:
 							eval_value = "Invalid procedure: %s" % procedure
 							_result.set_error(eval_value)
@@ -549,7 +591,14 @@ class Procedure:
 		for i in stored_arg_names.size():
 			stored_env.add(stored_arg_names[i], arg_values[i])
 		
-		stored_env.find("evaluator").eval(stored_expressions, stored_env)
+		return stored_env.find("EVALUATOR").eval(stored_expressions, stored_env)
+
+class Macro:
+	var stored_arg_names: Array
+	var stored_expressions: Exp
+
+	func expand() -> void:
+		pass
 
 ###############################################################################
 # Builtin functions                                                           #

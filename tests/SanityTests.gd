@@ -95,6 +95,13 @@ func test_setting_variables() -> void:
 
 	print(output)
 
+func test_simple_return() -> void:
+	var output = GDLisp.new().parse_string('(def x 1)(x)')
+	
+	assert(output[1] == 1)
+	
+	print(output)
+
 func test_while_loop() -> void:
 	var output = GDLisp.new().parse_string('(def x 0)(while (< x 5)(print x)(= x (+ x 1)))(x)')
 
@@ -106,5 +113,33 @@ func test_do() -> void:
 	var output = GDLisp.new().parse_string('(def x 100)(do (def x 0) (= x (+ x 1)) (print x) (def x -10) (print x))(x)')
 	
 	assert(output[2] == 100)
+	
+	print(output)
+
+func test_list() -> void:
+	var output = GDLisp.new().parse_string('(def x [1 2 3 4])(x)')
+	
+	assert(output[1][2] == 3)
+	
+	print(output)
+
+func test_table() -> void:
+	var output = GDLisp.new().parse_string('(def x { "1" 2 "3" 4 })(x)')
+	
+	assert(output[1]["3"] == 4)
+	
+	print(output)
+
+func test_lambda() -> void:
+	var output = GDLisp.new().parse_string("""
+(def x
+	(lam [x y]
+		(def z (+ x y))
+		(print z)
+		(z)))
+(x 1 1)
+	""")
+	
+	assert(output[1] == 2)
 	
 	print(output)
