@@ -499,7 +499,7 @@ class Evaluator:
 					"list": # Returns a Godot array (list () ...)
 						eval_value = []
 						if list.size() >= 2:
-							for item in list.slice(1, list.size() - 1, true):
+							for item in list.slice(1, list.size() - 1, 1, true):
 								eval_value.append(eval(item, env))
 					"table":
 						eval_value = {}
@@ -513,13 +513,14 @@ class Evaluator:
 							while idx < list.size():
 								eval_value[eval(list[idx], env)] = eval(list[idx + 1], env)
 								idx += 2
-					"lam": # Lambda (lam [] ())
+					"lam": # Lambda (lam [] () ...)
 						if not _has_enough_args(list.size(), 3, "lam"):
 							return
 						var arg_names = list[1].get_raw_value()
 						if not arg_names is Array:
 							eval_value = "lam expects a list of parameter names"
 							_result.set_error(eval_value)
+							return
 						if arg_names.size() == 1: # Can never be 0, so let us crash if it somehow is
 							arg_names = []
 						else:
@@ -529,21 +530,39 @@ class Evaluator:
 
 						var expressions = Exp.new(Exp.List, [])
 						expressions.append(Exp.new(Exp.Atom, Atom.new(Atom.Sym, "do")))
-						for expression in list.slice(2, list.size() - 1, true):
+						for expression in list.slice(2, list.size() - 1, 1, true):
 							expressions.append(expression)
 
 						eval_value = Procedure.new(arg_names, expressions, Env.new(env), weakref(self))
-					"macro": # (macro [] ())
+					"macro": # (macro [] () ...)
 						if not _has_enough_args(list.size(), 3, "macro"):
 							return
-						pass
+						var arg_names = list[1].get_raw_value()
+						if arg_names.size() < 2:
+							eval_value = "macro needs at least 1 parameter"
+							_result.set_error(eval_value)
+							return
+						arg_names = arg_names.slice(1, arg_names.size() - 1)
+						for i in arg_names.size():
+							arg_names[i] = arg_names[i].get_raw_value()
+
+						var expressions = Exp.new(Exp.List, [])
+						for expression in list.slice(2, list.size() - 1, 1, true):
+							expressions.append(expression)
+
+						eval_value = Macro.new(arg_names, expressions)
 					"label": # Label all nested S-expressions (label ())
 						pass
 					"goto": # Goto specified label (goto ())
 						pass
 					_:
 						var procedure = eval(list[0], env)
-						if (not procedure is FuncRef and not procedure is Procedure):
+						if procedure is Macro:
+							# TODO fill this out for macros
+							# We don't want to evaluate anything yet until the macro is expanded
+							procedure.expand(list.slice(1, list.size() - 1, 1, true))
+							pass
+						elif (not procedure is FuncRef and not procedure is Procedure):
 							eval_value = procedure
 							# NOTE this is the catch-all match, so this continue is okay
 							continue
@@ -595,10 +614,18 @@ class Procedure:
 
 class Macro:
 	var stored_arg_names: Array
-	var stored_expressions: Exp
+	var stored_expression: Exp
 
-	func expand() -> void:
-		pass
+	func _init(arg_names: Array, expression: Exp) -> void:
+		stored_arg_names = arg_names
+		stored_expression = expression
+
+	func expand(expressions: Exp) -> Exp:
+		var transformed_expression := Exp.new(Exp.List, [])
+
+		# TODO fill
+		
+		return transformed_expression
 
 ###############################################################################
 # Builtin functions                                                           #
