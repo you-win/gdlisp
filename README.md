@@ -50,13 +50,13 @@ The below example creates a table with the key/value pair `"hello": "world"` and
 
 `(def x { "hello" "world" })`
 
-### Create a lambda expression `(lambda [<parameters>] <expression> ...)`
+### Create a lambda expression `(lam [<parameters>] <expression> ...)`
 Creates and returns a lambda expression that takes the specified parameters and runs the specified expressions. A lambda expression does not need any parameters but must have at least 1 expression.
 
 The below example creates a lambda expression and assigns it to the variable `double`. The lambda expression is then used to double the value `2`. The returned value will equal `4`.
 
 ```
-(def double (lambda [ x ] (+ x x)))
+(def double (lam [ x ] (+ x x)))
 
 (double 2)
 ```
