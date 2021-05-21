@@ -16,7 +16,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if _is_mouse_entered:
 		if event.is_action_pressed("click"):
-			OS.clipboard = upper_label.text
+			OS.clipboard = _fix_text(upper_label.text)
 
 ###############################################################################
 # Connections                                                                 #
@@ -31,6 +31,9 @@ func _mouse_exited() -> void:
 ###############################################################################
 # Private functions                                                           #
 ###############################################################################
+
+func _fix_text(text: String) -> String:
+	return text.replace("    ", "\t")
 
 ###############################################################################
 # Public functions                                                            #

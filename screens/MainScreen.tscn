@@ -51,3 +51,6 @@ __meta__ = {
 [node name="Input" type="TextEdit" parent="CanvasLayer/InputContainer"]
 margin_right = 1004.0
 margin_bottom = 110.0
+highlight_current_line = true
+draw_tabs = true
+draw_spaces = true

@@ -77,8 +77,8 @@ func _send_input() -> void:
 	
 	yield(output_container, "ready")
 	
-	output_container.upper_label.text = input.text
-	output_container.lower_label.text = gd_lisp_text
+	output_container.upper_label.text = _fix_text(input.text)
+	output_container.lower_label.text = _fix_text(gd_lisp_text)
 	
 	while output.get_child_count() > 50:
 		output.get_child(0).free()
@@ -93,6 +93,9 @@ func _send_input() -> void:
 	# Set history, child_count + 1 is the current input
 	_current_history_position = output.get_child_count()
 	_current_input_state = ""
+
+func _fix_text(text: String) -> String:
+	return text.replace("\t", "    ")
 
 func _put_history_input(direction: int) -> void:
 	var child_count: int = output.get_child_count()

@@ -478,7 +478,7 @@ class Evaluator:
 						var test = list[1]
 						while eval(test, env):
 							for s in list.slice(2, list.size()):
-								eval(s, env)
+								eval_value = eval(s, env)
 					"for": # (for [] ())
 						pass
 					"def": # Create new variable in the current scope (def () ())
