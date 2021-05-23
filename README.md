@@ -14,6 +14,9 @@ Call `gdlisp.parse_string('(print "hello world"))` to start execution. The `pars
 ## Motivation
 It seemed like a cool idea at the time. I also wanted to write a language that had goto statements in it. [This website was a big help for the initial interpreter.](https://norvig.com/lispy.html). I tried to avoid referencing any explicit Make a Lisp (MAL) implementations.
 
+## Implementation notes
+- Arrays and Dictionaries are wrapped in the GDLArray and GDLDictionary classes respectively. This was done so that `set`/`get` can be called on Arrays and Dictionaries in GDLisp.
+
 ## TODO
 - finish implementing macros
 - finish implementing a way to access lists and tables
