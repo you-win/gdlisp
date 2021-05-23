@@ -5,6 +5,9 @@ onready var lower_label: Label = $MarginContainer/VBoxContainer/LowerLabel
 
 var _is_mouse_entered: bool = false
 
+var upper_text: String = ""
+var lower_text: String = ""
+
 ###############################################################################
 # Builtin functions                                                           #
 ###############################################################################
@@ -12,6 +15,9 @@ var _is_mouse_entered: bool = false
 func _ready() -> void:
 	connect("mouse_entered", self, "_mouse_entered")
 	connect("mouse_exited", self, "_mouse_exited")
+	
+	upper_label.text = upper_text
+	lower_label.text = lower_text
 
 func _input(event: InputEvent) -> void:
 	if _is_mouse_entered:

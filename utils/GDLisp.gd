@@ -72,6 +72,35 @@ class Tuple3 extends Tuple2:
 	func s2(value):
 		_v2 = value
 
+class GDLCollectionWrapper:
+	var _value
+	
+	func set(key, value) -> void:
+		_value[key] = value
+	
+	func get(key):
+		return _value[key]
+	
+	func get_raw_value():
+		return _value
+	
+	func duplicate():
+		return _value.duplicate(true)
+	
+	func _to_string() -> String:
+		return "GDLCollectionWrapper:%s" % str(_value)
+
+class GDLArray extends GDLCollectionWrapper:
+	func _init() -> void:
+		_value = []
+	
+	func append(value) -> void:
+		_value.append(value)
+
+class GDLDictionary extends GDLCollectionWrapper:
+	func _init() -> void:
+		_value = {}
+
 class Env:
 	var _inner: Dictionary # This scope
 	var _outer: Env # Outer scope
@@ -323,13 +352,16 @@ class Tokenizer:
 						_build_token(result)
 						current_type = ParseSpace
 				'"':
-					if (current_type == ParseSpace or current_type == ParseEscapeCharacter):
-						token_builder.append(c)
-						current_type = ParseQuotation
-					elif current_type == ParseQuotation:
+					if current_type == ParseQuotation: # Close the double quote
 						token_builder.append(c)
 						current_type = None
 						_build_token(result)
+					elif current_type == ParseEscapeCharacter: # This is a double quote literal
+						token_builder.append(c)
+						current_type = None
+					else: # Open the double quote
+						token_builder.append(c)
+						current_type = ParseQuotation
 				"\\":
 					if current_type == ParseQuotation:
 						current_type = ParseEscapeCharacter
@@ -417,7 +449,7 @@ class Parser:
 			return Atom.new(Atom.Sym, token)
 
 	func _error(error_message: String) -> Exp:
-		_result = Result.new(null, Error.new(error_message))
+		_result.set_error(error_message)
 		return None.new()
 
 class Evaluator:
@@ -497,12 +529,12 @@ class Evaluator:
 							_result.set_error(eval_value)
 							return
 					"list": # Returns a Godot array (list () ...)
-						eval_value = []
+						eval_value = GDLArray.new()
 						if list.size() >= 2:
 							for item in list.slice(1, list.size() - 1, 1, true):
 								eval_value.append(eval(item, env))
 					"table":
-						eval_value = {}
+						eval_value = GDLDictionary.new()
 						if list.size() >= 2:
 							# Check for equal pairs
 							if not (list.size() - 1) % 2 == 0:
@@ -511,7 +543,7 @@ class Evaluator:
 								return
 							var idx: int = 1
 							while idx < list.size():
-								eval_value[eval(list[idx], env)] = eval(list[idx + 1], env)
+								eval_value.set(eval(list[idx], env), eval(list[idx + 1], env))
 								idx += 2
 					"lam": # Lambda (lam [] () ...)
 						if not _has_enough_args(list.size(), 3, "lam"):
@@ -551,6 +583,20 @@ class Evaluator:
 							expressions.append(expression)
 
 						eval_value = Macro.new(arg_names, expressions)
+					"raw": # (raw () () ...)
+						if not _has_enough_args(list.size(), 3, "raw"):
+							return
+						var object = eval(list[1], env)
+						var method = list[2].get_raw_value()
+						if not method is String:
+							eval_value = "method in raw call must be a String"
+							_result.set_error(eval_value)
+							return
+						var call_args := []
+						if list.size() > 3:
+							for i in list.slice(3, list.size() - 1, 1, true):
+								call_args.append(i.get_raw_value())
+						eval_value = object.callv(method, call_args)
 					"label": # Label all nested S-expressions (label ())
 						pass
 					"goto": # Goto specified label (goto ())

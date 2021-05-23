@@ -15,6 +15,11 @@ _global_script_classes=[ {
 "path": "res://utils/GDLisp.gd"
 }, {
 "base": "Reference",
+"class": "GDLispSyntaxDoc",
+"language": "GDScript",
+"path": "res://utils/GDLispSyntaxDoc.gd"
+}, {
+"base": "Reference",
 "class": "SaveDataUtil",
 "language": "GDScript",
 "path": "res://utils/SaveDataUtil.gd"
@@ -26,6 +31,7 @@ _global_script_classes=[ {
 } ]
 _global_script_class_icons={
 "GDLisp": "",
+"GDLispSyntaxDoc": "",
 "SaveDataUtil": "",
 "TestBase": ""
 }

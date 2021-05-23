@@ -119,14 +119,14 @@ func test_do() -> void:
 func test_list() -> void:
 	var output = GDLisp.new().parse_string('(def x [1 2 3 4])(x)')
 	
-	assert(output[1][2] == 3)
+	assert(output[1].get_raw_value()[2] == 3)
 	
 	print(output)
 
 func test_table() -> void:
 	var output = GDLisp.new().parse_string('(def x { "1" 2 "3" 4 })(x)')
 	
-	assert(output[1]["3"] == 4)
+	assert(output[1].get_raw_value()["3"] == 4)
 	
 	print(output)
 

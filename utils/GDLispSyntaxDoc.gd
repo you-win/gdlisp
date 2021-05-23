@@ -1,27 +1,24 @@
-# GDLisp
-A Lisp-style language and REPL written using GDScript and Godot 3.3.
+class_name GDLispSyntaxDoc
+extends Reference
 
-## Quickstart
-Run the main scene. Start writing Lisp-style stuff.
+###############################################################################
+# Builtin functions                                                           #
+###############################################################################
 
-## Integration into Godot games/apps
-Take the `gdlisp.gd` file and drop it into your project. Create a new `gdlisp` object.
+###############################################################################
+# Connections                                                                 #
+###############################################################################
 
-A dictionary of initialization variables can be passed as an argument (e.g. `var gdlisp = GDLISP.new({"some-identifier": myobject})`). If you want to be able to modify objects from GDLisp, these initialization variables must be some sort of reference (i.e. not a primitive). 
+###############################################################################
+# Private functions                                                           #
+###############################################################################
 
-Call `gdlisp.parse_string('(print "hello world"))` to start execution. The `parse_string` method will return an array of return values, depending on how many root S-expressions were passed.
+###############################################################################
+# Public functions                                                            #
+###############################################################################
 
-## Motivation
-It seemed like a cool idea at the time. I also wanted to write a language that had goto statements in it. [This website was a big help for the initial interpreter.](https://norvig.com/lispy.html). I tried to avoid referencing any explicit Make a Lisp (MAL) implementations.
-
-## TODO
-- finish implementing macros
-- finish implementing a way to access lists and tables
-- allow for compilation to GDScript
-- self host the interpreter
-
-## Syntax
-
+static func get_long() -> String:
+	return """ *** GDLisp Syntax ***
 ### Define a variable `(def <identifier> <value>)`
 Creates a variable in the current scope and sets it to the specified value. Can shadow outer variables if used in an inner scope.
 
@@ -102,3 +99,5 @@ Marks the current expression as a `goto` location.
 ### Goto `(goto <label>)`
 Not yet implemented.
 Moves execution to the specified `label`. The `label` must be in the same scope or an outer scope. If the `label` has not be interpreted yet, then the interpreter will conduct a breadth-first search for the `label`.
+
+"""
