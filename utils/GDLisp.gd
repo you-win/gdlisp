@@ -390,6 +390,8 @@ class Parser:
 	var _depth: int = 0
 	var _result: Result
 
+	var _is_quoted: bool = false
+
 	func _init(result: Result) -> void:
 		_result = result
 	
@@ -431,6 +433,9 @@ class Parser:
 				tokens.pop_back() # Remove last '}'
 			"}":
 				return _error("Unexpected }")
+			"'":
+				_is_quoted = true
+				return Exp.new(Exp.Atom, _atom("'"))
 			_:
 				return Exp.new(Exp.Atom, _atom(token))
 
@@ -653,10 +658,10 @@ class Procedure:
 class Macro:
 	"""
 	Example
-	(macro [code]
+	(def infix (macro [code]
 		(raw code get 0)
 		(raw code get 1)
-		(raw code get 2))
+		(raw code get 2)))
 	(infix (1 + 1))
 	"""
 	var stored_arg_names: Array
@@ -676,10 +681,16 @@ class Macro:
 			stored_env.add(stored_arg_names[i], GDLArray.new(raw_value))
 
 		var evaluator: Evaluator = stored_env.find("__evaluator__")
-		# Handle many s-expressions
+		var is_quoted: bool = false
 		for se in stored_expression:
-			# TODO currently only works for non-nested s-expressions
-			result_expression.append(evaluator.eval(se, stored_env))
+			var raw_value = se.get_raw_value()
+			if (raw_value is String and raw_value == "'"):
+				is_quoted = true
+			elif is_quoted:
+				is_quoted = false
+				result_expression.append(se)
+			else:
+				result_expression.append(evaluator.eval(se, stored_env))
 		
 		return result_expression
 
