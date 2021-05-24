@@ -19,7 +19,7 @@ There are several REPL-only commands for convenience.
 	exit
 		Exits the repl"""
 
-const CUSTOM_REPL_COMMANDS := ["help", "syntax", "clear", "reset", "blurb", "exit", "ls", "cd"]
+const CUSTOM_REPL_COMMANDS := ["help", "syntax", "clear", "reset", "blurb", "exit"]
 
 onready var output: VBoxContainer = $CanvasLayer/OutputContainer/ScrollContainer/Output
 onready var scroll_container: ScrollContainer = $CanvasLayer/OutputContainer/ScrollContainer
@@ -128,8 +128,6 @@ func _handle_custom_repl_commands() -> void:
 			output_text = _generate_random_blurb()
 		"exit":
 			get_tree().quit()
-		"ls", "cd":
-			output_text = "wrong terminal bud\n\n%s" % _generate_random_blurb()
 		_:
 			AppManager.log_message("This shouldn't be possible lmao: %s" % input.text, true)
 	

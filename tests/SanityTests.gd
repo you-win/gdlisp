@@ -139,7 +139,21 @@ func test_lambda() -> void:
 		(z)))
 (x 1 1)
 	""")
+
+	assert(output[1] == 2)
+
+	print(output)
+
+func test_macro_simple() -> void:
+	var output = GDLisp.new().parse_string("""
+(def infix (macro [code]
+	(raw code get 1)
+	(raw code get 0)
+	(raw code get 2)))
+
+(infix (1 + 1))
+	""")
 	
 	assert(output[1] == 2)
-	
+
 	print(output)

@@ -91,15 +91,15 @@ class GDLCollectionWrapper:
 		return "GDLCollectionWrapper:%s" % str(_value)
 
 class GDLArray extends GDLCollectionWrapper:
-	func _init() -> void:
-		_value = []
+	func _init(value: Array = []) -> void:
+		_value = value
 	
 	func append(value) -> void:
 		_value.append(value)
 
 class GDLDictionary extends GDLCollectionWrapper:
-	func _init() -> void:
-		_value = {}
+	func _init(value: Dictionary = {}) -> void:
+		_value = value
 
 class Env:
 	var _inner: Dictionary # This scope
@@ -458,7 +458,7 @@ class Evaluator:
 
 	func _init(result: Result, env: Env) -> void:
 		_result = result
-		env.add("EVALUATOR", self)
+		env.add("__evaluator__", self)
 
 	func eval(v: Exp, env: Env):
 		var eval_value
@@ -565,24 +565,23 @@ class Evaluator:
 						for expression in list.slice(2, list.size() - 1, 1, true):
 							expressions.append(expression)
 
-						eval_value = Procedure.new(arg_names, expressions, Env.new(env), weakref(self))
+						eval_value = Procedure.new(arg_names, expressions, Env.new(env))
 					"macro": # (macro [] () ...)
 						if not _has_enough_args(list.size(), 3, "macro"):
 							return
 						var arg_names = list[1].get_raw_value()
 						if arg_names.size() < 2:
-							eval_value = "macro needs at least 1 parameter"
-							_result.set_error(eval_value)
-							return
-						arg_names = arg_names.slice(1, arg_names.size() - 1)
-						for i in arg_names.size():
-							arg_names[i] = arg_names[i].get_raw_value()
+							arg_names = []
+						else:
+							arg_names = arg_names.slice(1, arg_names.size() - 1)
+							for i in arg_names.size():
+								arg_names[i] = arg_names[i].get_raw_value()
 
 						var expressions = Exp.new(Exp.List, [])
 						for expression in list.slice(2, list.size() - 1, 1, true):
 							expressions.append(expression)
 
-						eval_value = Macro.new(arg_names, expressions)
+						eval_value = Macro.new(arg_names, expressions, Env.new(env))
 					"raw": # (raw () () ...)
 						if not _has_enough_args(list.size(), 3, "raw"):
 							return
@@ -606,8 +605,8 @@ class Evaluator:
 						if procedure is Macro:
 							# TODO fill this out for macros
 							# We don't want to evaluate anything yet until the macro is expanded
-							procedure.expand(list.slice(1, list.size() - 1, 1, true))
-							pass
+							list = procedure.expand(list.slice(1, list.size() - 1, 1, true)).get_raw_value()
+							procedure = eval(list[0], env)
 						elif (not procedure is FuncRef and not procedure is Procedure):
 							eval_value = procedure
 							# NOTE this is the catch-all match, so this continue is okay
@@ -644,34 +643,50 @@ class Procedure:
 	var stored_arg_names: Array
 	var stored_expressions: Exp
 	var stored_env: Env
-	var evaluator: WeakRef
 
-	func _init(arg_names: Array, expressions: Exp, env: Env, eval: WeakRef) -> void:
+	func _init(arg_names: Array, expressions: Exp, env: Env) -> void:
 		stored_arg_names = arg_names
 		stored_expressions = expressions
 		stored_env = env
-		evaluator = eval
 
 	func call_func(arg_values: Array):
 		for i in stored_arg_names.size():
 			stored_env.add(stored_arg_names[i], arg_values[i])
 		
-		return stored_env.find("EVALUATOR").eval(stored_expressions, stored_env)
+		return stored_env.find("__evaluator__").eval(stored_expressions, stored_env)
 
 class Macro:
+	"""
+	Example
+	(macro [code]
+		(raw code get 0)
+		(raw code get 1)
+		(raw code get 2))
+	(infix (1 + 1))
+	"""
 	var stored_arg_names: Array
 	var stored_expression: Exp
+	var stored_env: Env
 
-	func _init(arg_names: Array, expression: Exp) -> void:
+	func _init(arg_names: Array, expression: Exp, env: Env) -> void:
 		stored_arg_names = arg_names
 		stored_expression = expression
+		stored_env = env
 
-	func expand(expressions: Exp) -> Exp:
-		var transformed_expression := Exp.new(Exp.List, [])
-
-		# TODO fill
+	func expand(expressions: Array) -> Exp:
+		var result_expression := Exp.new(Exp.List, [])
 		
-		return transformed_expression
+		for i in stored_arg_names.size():
+			var raw_value = expressions[i].get_raw_value()
+			stored_env.add(stored_arg_names[i], GDLArray.new(raw_value))
+
+		var evaluator: Evaluator = stored_env.find("__evaluator__")
+		# Handle many s-expressions
+		for se in stored_expression.get_raw_value():
+			# TODO currently only works for non-nested s-expressions
+			result_expression.append(evaluator.eval(se, stored_env))
+		
+		return result_expression
 
 ###############################################################################
 # Builtin functions                                                           #
