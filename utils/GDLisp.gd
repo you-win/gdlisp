@@ -148,6 +148,7 @@ var global_environment_dictionary: Dictionary = {
 	"*": funcref(EnvUtils, "multiply"),
 	"/": funcref(EnvUtils, "divide"),
 	"==": funcref(EnvUtils, "equals"),
+	"!=": funcref(EnvUtils, "not_equals"),
 	"<": funcref(EnvUtils, "less_than"),
 	"<=": funcref(EnvUtils, "less_than_or_equal_to"),
 	">": funcref(EnvUtils, "greater_than"),
@@ -158,7 +159,10 @@ var global_environment_dictionary: Dictionary = {
 	"false": false,
 	
 	# Builtin functions
-	"print": funcref(EnvUtils, "print")
+	"print": funcref(EnvUtils, "print"),
+
+	# Label indexing
+	"__labels__": {} # String: LabelData
 }
 
 var global_env: Env = Env.new()
@@ -166,7 +170,7 @@ var global_env: Env = Env.new()
 class EnvUtils:
 	static func plus(a: Array):
 		if a.size() < 2:
-			return 0
+			return a[0]
 
 		var result = a[0]
 		for i in a.slice(1, a.size() - 1):
@@ -175,7 +179,7 @@ class EnvUtils:
 	
 	static func minus(a: Array):
 		if a.size() < 2:
-			return 0
+			return -a[0]
 
 		var result = a[0]
 		for i in a.slice(1, a.size() - 1):
@@ -204,6 +208,11 @@ class EnvUtils:
 		if a.size() != 2:
 			return false
 		return a[0] == a[1]
+
+	static func not_equals(a: Array):
+		if a.size() != 2:
+			return false
+		return a[0] != a[1]
 	
 	static func less_than(a: Array):
 		if a.size() != 2:
@@ -461,6 +470,8 @@ class Evaluator:
 	var _depth: int = 0
 	var _result: Result
 
+	var _s_expression_stack: Array = []
+
 	func _init(result: Result, env: Env) -> void:
 		_result = result
 		env.add("__evaluator__", self)
@@ -487,6 +498,7 @@ class Evaluator:
 				Atom.Num:
 					eval_value = v.get_raw_value()
 		elif v.type == Exp.List:
+			_s_expression_stack.push_back(v)
 			var list: Array = v.get_value()
 			if list.size() != 0:
 				match list[0].get_raw_value():
@@ -598,8 +610,24 @@ class Evaluator:
 								call_args.append(i.get_raw_value())
 						eval_value = object.callv(method, call_args)
 					"label": # Label all nested S-expressions (label ())
-						pass
+						if not _has_exact_args(list.size(), 2, "label"):
+							return
+						var label_name = list[1]
+						var label_data: LabelData = LabelData.new(label_name, env, _s_expression_stack.slice(0, _s_expression_stack.size() - 2))
+						
+						env.find("__labels__")[label_name] = label_data
 					"goto": # Goto specified label (goto ())
+						if not _has_exact_args(list.size(), 2, "goto"):
+							return
+						var label_data: LabelData = env.find(list[1])
+						# TODO implement breadth-first search for labels
+						if not label_data: # label was not cached
+							for i in _s_expression_stack[0].get_raw_value():
+								if i.type == Exp.List:
+									pass
+						
+						pass
+					"import": # Import file from relative path (import ())
 						pass
 					_:
 						var procedure = eval(list[0], env)
@@ -655,6 +683,8 @@ class Procedure:
 		
 		return stored_env.find("__evaluator__").eval(stored_expressions, stored_env)
 
+# TODO only works for single-level macros, nested expressions don't work
+# probably want to write a custom eval function that only evaluates atoms
 class Macro:
 	"""
 	Example
@@ -693,6 +723,16 @@ class Macro:
 				result_expression.append(evaluator.eval(se, stored_env))
 		
 		return result_expression
+
+class LabelData:
+	var name: String
+	var scope: Env
+	var stack: Array
+
+	func _init(label_name: String, outer_env: Env, label_stack: Array) -> void:
+		name = label_name
+		scope = outer_env
+		stack = label_stack
 
 ###############################################################################
 # Builtin functions                                                           #

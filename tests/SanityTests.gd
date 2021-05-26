@@ -130,7 +130,7 @@ func test_table() -> void:
 	
 	print(output)
 
-func test_lambda() -> void:
+func test_lambda_simple() -> void:
 	var output = GDLisp.new().parse_string("""
 (def x
 	(lam [x y]
@@ -141,6 +141,38 @@ func test_lambda() -> void:
 	""")
 
 	assert(output[1] == 2)
+
+	print(output)
+
+func test_lambda_redefine_builtin() -> void:
+	var input: String = """
+(def +
+	(lam [x y]
+		(- x (- 0 y))))
+
+(def sign
+	(lam [x]
+		(if (> x 0)
+			(1)
+			(-1))))
+
+(def *
+	(lam [x y]
+		(def return-value 0)
+		(def counter y)
+		(def incrementer (sign y))
+		(= incrementer (- 0 incrementer))
+		(while (!= counter 0)
+			(= return-value (+ return-value x))
+			(= counter (+ counter incrementer)))
+		(return-value)))
+
+(* 10 2)
+	"""
+
+	var output = GDLisp.new().parse_string(input)
+
+	assert(output[3] == 20)
 
 	print(output)
 
@@ -157,3 +189,7 @@ func test_macro_simple() -> void:
 	assert(output[1] == 2)
 
 	print(output)
+
+func test_goto() -> void:
+	print("not yet implemented")
+	pass
