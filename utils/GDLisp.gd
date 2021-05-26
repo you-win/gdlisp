@@ -612,21 +612,26 @@ class Evaluator:
 					"label": # Label all nested S-expressions (label ())
 						if not _has_exact_args(list.size(), 2, "label"):
 							return
-						var label_name = list[1]
+						var label_name = list[1].get_raw_value()
 						var label_data: LabelData = LabelData.new(label_name, env, _s_expression_stack.slice(0, _s_expression_stack.size() - 2))
 						
 						env.find("__labels__")[label_name] = label_data
 					"goto": # Goto specified label (goto ())
 						if not _has_exact_args(list.size(), 2, "goto"):
 							return
-						var label_data: LabelData = env.find(list[1])
+						var global_label_dictionary: Dictionary = env.find("__labels__")
+						var label_data: LabelData
+						
 						# TODO implement breadth-first search for labels
-						if not label_data: # label was not cached
+						if not global_label_dictionary.has(list[1].get_raw_value()): # label was not cached
 							for i in _s_expression_stack[0].get_raw_value():
 								if i.type == Exp.List:
 									pass
+						else:
+							label_data = global_label_dictionary[list[1].get_raw_value()]
 						
-						pass
+						_skip_execution = true
+						_resume_on_exp = label_data.stack.back()
 					"import": # Import file from relative path (import ())
 						pass
 					_:
