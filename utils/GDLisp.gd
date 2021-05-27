@@ -160,6 +160,7 @@ var global_environment_dictionary: Dictionary = {
 	
 	# Builtin functions
 	"print": funcref(EnvUtils, "print"),
+	"self": self,
 
 	# Label indexing
 	"__labels__": {} # String: LabelData
@@ -301,6 +302,7 @@ class Tokenizer:
 	enum { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation, ParseBracket, ParseEscapeCharacter }
 
 	var current_type: int = None
+	var is_escape_character: bool = false
 
 	var token_builder: PoolStringArray = PoolStringArray()
 
@@ -323,61 +325,61 @@ class Tokenizer:
 
 		for i in value.length():
 			var c: String = value[i]
-			match c:
-				"(":
-					paren_counter += 1
-					_build_token(result)
-					current_type = ParseExpression
-					result.append(c)
-				")":
-					paren_counter -= 1
-					_build_token(result)
+			if c == '"':
+				if is_escape_character: # This is a double quote literal
+					token_builder.append(c)
+					is_escape_character = false
+				elif current_type == ParseQuotation: # Close the double quote
+					token_builder.append(c)
 					current_type = None
-					result.append(c)
-				"[":
-					square_bracket_counter += 1
 					_build_token(result)
-					current_type = ParseBracket
-					result.append(c)
-				"]":
-					square_bracket_counter -= 1
-					_build_token(result)
-					current_type = None
-					result.append(c)
-				"{":
-					curly_bracket_counter += 1
-					_build_token(result)
-					current_type = ParseBracket
-					result.append(c)
-				"}":
-					curly_bracket_counter -= 1
-					_build_token(result)
-					current_type = None
-					result.append(c)
-				" ", "\r\n", "\n", "\t":
-					if current_type == ParseQuotation:
-						token_builder.append(c)
-					else:
+				else: # Open the double quote
+					token_builder.append(c)
+					current_type = ParseQuotation
+			elif current_type == ParseQuotation:
+				if c == "\\":
+					is_escape_character = true
+				else:
+					token_builder.append(c)
+			else:
+				match c:
+					"(":
+						paren_counter += 1
+						_build_token(result)
+						current_type = ParseExpression
+						result.append(c)
+					")":
+						paren_counter -= 1
+						_build_token(result)
+						current_type = None
+						result.append(c)
+					"[":
+						square_bracket_counter += 1
+						_build_token(result)
+						current_type = ParseBracket
+						result.append(c)
+					"]":
+						square_bracket_counter -= 1
+						_build_token(result)
+						current_type = None
+						result.append(c)
+					"{":
+						curly_bracket_counter += 1
+						_build_token(result)
+						current_type = ParseBracket
+						result.append(c)
+					"}":
+						curly_bracket_counter -= 1
+						_build_token(result)
+						current_type = None
+						result.append(c)
+					" ", "\r\n", "\n", "\t":
 						_build_token(result)
 						current_type = ParseSpace
-				'"':
-					if current_type == ParseQuotation: # Close the double quote
-						token_builder.append(c)
-						current_type = None
-						_build_token(result)
-					elif current_type == ParseEscapeCharacter: # This is a double quote literal
-						token_builder.append(c)
-						current_type = None
-					else: # Open the double quote
-						token_builder.append(c)
-						current_type = ParseQuotation
-				"\\":
-					if current_type == ParseQuotation:
-						current_type = ParseEscapeCharacter
-				_:
-					if current_type == ParseQuotation:
-						token_builder.append(c)
-					else:
+					# "\\":
+						# if current_type == ParseQuotation:
+							# is_escape_character = true
+					_:
 						current_type = ParseSymbol
 						token_builder.append(c)
 		
@@ -469,6 +471,8 @@ class Parser:
 class Evaluator:
 	var _depth: int = 0
 	var _result: Result
+	
+	# TODO store initial exp here
 
 	var _s_expression_stack: Array = []
 
@@ -476,6 +480,8 @@ class Evaluator:
 		_result = result
 		env.add("__evaluator__", self)
 
+	# TODO change v to be an exp pointer
+	# Access actual expressions from the stored expressions
 	func eval(v: Exp, env: Env):
 		var eval_value
 		_depth += 1
@@ -609,6 +615,21 @@ class Evaluator:
 							for i in list.slice(3, list.size() - 1, 1, true):
 								call_args.append(i.get_raw_value())
 						eval_value = object.callv(method, call_args)
+					"expr": # (expr ())
+						if not _has_exact_args(list.size(), 2, "expr"):
+							return
+						var input_expression = list[1].get_raw_value()
+						if not input_expression is String:
+							eval_value = "Expression body must be a String"
+							_result.set_error(eval_value)
+							return
+						var godot_expression: Expression = Expression.new()
+						var error = godot_expression.parse(input_expression)
+						if error != OK:
+							eval_value = "Failed to parse expression"
+							_result.set_error(eval_value)
+							return
+						eval_value = godot_expression.execute()
 					"label": # Label all nested S-expressions (label ())
 						if not _has_exact_args(list.size(), 2, "label"):
 							return
@@ -629,9 +650,8 @@ class Evaluator:
 									pass
 						else:
 							label_data = global_label_dictionary[list[1].get_raw_value()]
-						
-						_skip_execution = true
-						_resume_on_exp = label_data.stack.back()
+
+						# TODO fill this out
 					"import": # Import file from relative path (import ())
 						pass
 					_:
