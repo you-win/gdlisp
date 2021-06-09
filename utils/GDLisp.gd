@@ -159,10 +159,10 @@ class Tokenizer:
 		
 		# Checks for raw strings of size 1
 		if value.length() <= 2:
-			return [result, "Program too short"]
+			return Error.new("Program too short")
 
 		for i in value.length():
-			var c: String = value[i]
+			var c: String = value.substr(i, 1)
 			if c == '"':
 				if is_escape_character: # This is a double quote literal
 					token_builder.append(c)
@@ -233,19 +233,19 @@ class Tokenizer:
 			result.clear()
 			error = "Mismatched curly brackets"
 
-		return [result, error]
+		return Result.new(result, error)
 
 class Parser:
 	var _depth: int = 0
-	var _result: Result
+	var _result
 
 	var _is_quoted: bool = false
 
-	func _init(result: Result):
+	func _init(result):
 		_result = result
 	
 	func parse(tokens: Array):
-		var list_expression: Exp = Exp.new(Exp.List, [])
+		var list_expression: Exp = Exp.new(Exp.ExpType.List, [])
 
 		if _result.is_err():
 			return _error("Aborting due to previous error")
@@ -268,7 +268,7 @@ class Parser:
 				return _error("Unexpected )")
 			"[":
 				_depth += 1
-				list_expression.append(Exp.new(Exp.Atom, _atom("list")))
+				list_expression.append(Exp.new(Exp.ExpType.Atom, _atom("list")))
 				while tokens[tokens.size() - 1] != "]":
 					list_expression.append(parse(tokens))
 				tokens.pop_back() # Remove last ']'
@@ -276,7 +276,7 @@ class Parser:
 				return _error("Unexpected ]")
 			"{":
 				_depth += 1
-				list_expression.append(Exp.new(Exp.Atom, _atom("table")))
+				list_expression.append(Exp.new(Exp.ExpType.Atom, _atom("table")))
 				while tokens[tokens.size() - 1] != "}":
 					list_expression.append(parse(tokens))
 				tokens.pop_back() # Remove last '}'
@@ -284,9 +284,9 @@ class Parser:
 				return _error("Unexpected }")
 			"'":
 				_is_quoted = true
-				return Exp.new(Exp.Atom, _atom("'"))
+				return Exp.new(Exp.ExpType.Atom, _atom("'"))
 			_:
-				return Exp.new(Exp.Atom, _atom(token))
+				return Exp.new(Exp.ExpType.Atom, _atom(token))
 
 		_depth -= 1
 		if _depth == 0:
@@ -337,12 +337,12 @@ func _tokenize(value: String):
 
 	return tokenizer.tokenize(value)
 
-func _parse(tokens: Array, result: Result):
+func _parse(tokens: Array, result):
 	var parser: Parser = Parser.new(result)
 
 	return parser.parse(tokens)
 
-func _eval(v: Exp, result: Result, eval_env: Env = global_env):
+func _eval(v: Exp, result, eval_env: Env = global_env):
 	var evaluator: Evaluator = Evaluator.new(result, eval_env)
 
 	return evaluator.eval(v, eval_env)
@@ -354,16 +354,17 @@ func _eval(v: Exp, result: Result, eval_env: Env = global_env):
 func parse_string(value: String):
 	var result: Array = []
 	# String
-	var tokenize_result: Result = _tokenize(value)
+	var tokenize_result = _tokenize(value)
 	if tokenize_result.is_err():
 		return tokenize_result.unwrap_err()
 	var tokens: Array = tokenize_result.unwrap()
 	
 	tokens.reverse()
 
+	print(tokens)
 	var parsed_tokens_array: Array = []
 	while tokens.size() != 0:
-		var parser_result: Result = Result.new(null, null)
+		var parser_result = Result.new(null, null)
 		_parse(tokens, parser_result)
 
 		if parser_result.is_err():
@@ -372,7 +373,7 @@ func parse_string(value: String):
 		parsed_tokens_array.append(parser_result.unwrap())
 
 	for i in parsed_tokens_array:
-		var eval_result: Result = Result.new(null, null)
+		var eval_result = Result.new(null, null)
 		_eval(i, eval_result)
 
 		if eval_result.is_err():

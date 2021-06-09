@@ -17,3 +17,4 @@ export_presets.cfg
 .mono/
 data_*/
 export/
+.godot/

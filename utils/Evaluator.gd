@@ -2,13 +2,13 @@ class_name Evaluator
 extends Reference
 
 var _depth: int = 0
-var _result: Result
+var _result
 
 # TODO store initial exp here
 
 var _s_expression_stack: Array = []
 
-func _init(result: Result, env: Env):
+func _init(result, env: Env):
 	_result = result
 	env.add("__evaluator__", self)
 
@@ -18,13 +18,13 @@ func eval(v: Exp, env: Env):
 	var eval_value
 	_depth += 1
 	
-	if v.type == Exp.Atom:
+	if v.type == Exp.ExpType.Atom:
 		match v.get_value().type:
 			Atom.Sym:
 				var raw_value = v.get_raw_value()
 				var env_value = env.find(raw_value)
-				
-				if env_value == null:
+		
+				if typeof(env_value) == TYPE_NIL:
 					AppManager.log_message("Undefined symbol %s" % raw_value)
 					eval_value = "Undefined symbol"
 					_result.set_error(eval_value)
@@ -35,7 +35,7 @@ func eval(v: Exp, env: Env):
 				eval_value = v.get_raw_value()
 			Atom.Num:
 				eval_value = v.get_raw_value()
-	elif v.type == Exp.List:
+	elif v.type == Exp.ExpType.List:
 		_s_expression_stack.push_back(v)
 		var list: Array = v.get_value()
 		if list.size() != 0:
@@ -115,8 +115,8 @@ func eval(v: Exp, env: Env):
 						for i in arg_names.size():
 							arg_names[i] = arg_names[i].get_raw_value()
 
-					var expressions = Exp.new(Exp.List, [])
-					expressions.append(Exp.new(Exp.Atom, Atom.new(Atom.Sym, "do")))
+					var expressions = Exp.new(Exp.ExpType.List, [])
+					expressions.append(Exp.new(Exp.ExpType.Atom, Atom.new(Atom.Sym, "do")))
 					for expression in list.slice(2, list.size() - 1, 1, true):
 						expressions.append(expression)
 
@@ -162,28 +162,28 @@ func eval(v: Exp, env: Env):
 						_result.set_error(eval_value)
 						return
 					eval_value = godot_expression.execute()
-				"label": # Label all nested S-expressions (label ())
-					if not _has_exact_args(list.size(), 2, "label"):
-						return
-					var label_name = list[1].get_raw_value()
-					var label_data: LabelData = LabelData.new(label_name, env, _s_expression_stack.slice(0, _s_expression_stack.size() - 2))
-					
-					env.find("__labels__")[label_name] = label_data
-				"goto": # Goto specified label (goto ())
-					if not _has_exact_args(list.size(), 2, "goto"):
-						return
-					var global_label_dictionary: Dictionary = env.find("__labels__")
-					var label_data: LabelData
-					
-					# TODO implement breadth-first search for labels
-					if not global_label_dictionary.has(list[1].get_raw_value()): # label was not cached
-						for i in _s_expression_stack[0].get_raw_value():
-							if i.type == Exp.List:
-								pass
-					else:
-						label_data = global_label_dictionary[list[1].get_raw_value()]
-
-					# TODO fill this out
+#				"label": # Label all nested S-expressions (label ())
+#					if not _has_exact_args(list.size(), 2, "label"):
+#						return
+#					var label_name = list[1].get_raw_value()
+#					var label_data: LabelData = LabelData.new(label_name, env, _s_expression_stack.slice(0, _s_expression_stack.size() - 2))
+#
+#					env.find("__labels__")[label_name] = label_data
+#				"goto": # Goto specified label (goto ())
+#					if not _has_exact_args(list.size(), 2, "goto"):
+#						return
+#					var global_label_dictionary: Dictionary = env.find("__labels__")
+#					var label_data: LabelData
+#
+#					# TODO implement breadth-first search for labels
+#					if not global_label_dictionary.has(list[1].get_raw_value()): # label was not cached
+#						for i in _s_expression_stack[0].get_raw_value():
+#							if i.type == Exp.List:
+#								pass
+#					else:
+#						label_data = global_label_dictionary[list[1].get_raw_value()]
+#
+#					# TODO fill this out
 				"import": # Import file from relative path (import ())
 					pass
 				_:
@@ -192,7 +192,7 @@ func eval(v: Exp, env: Env):
 						# We don't want to evaluate anything yet until the macro is expanded
 						eval_value = eval(procedure.expand(list.slice(1, list.size() - 1, 1, true)), Env.new(env))
 						continue
-					elif (not procedure is FuncRef and not procedure is Procedure):
+					elif (not procedure is Callable and not procedure is Procedure):
 						eval_value = procedure
 						# NOTE this is the catch-all match, so this continue is okay
 						continue
@@ -203,7 +203,7 @@ func eval(v: Exp, env: Env):
 						eval_value = "Invalid procedure: %s" % procedure
 						_result.set_error(eval_value)
 						return
-					eval_value = procedure.call_func(args)
+					eval_value = procedure.call(args)
 	
 	_depth -= 1
 	

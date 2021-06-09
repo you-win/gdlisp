@@ -63,7 +63,7 @@ func _input(event: InputEvent) -> void:
 				await _handle_custom_repl_commands()
 			else:
 				await _send_input()
-			get_tree().set_input_as_handled()
+			get_viewport().set_input_as_handled()
 		elif event.is_action_pressed("ui_up"):
 			_put_history_input(-1)
 		elif event.is_action_pressed("ui_down"):

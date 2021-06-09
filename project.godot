@@ -10,30 +10,96 @@ config_version=4
 
 _global_script_classes=[ {
 "base": "Reference",
-"class": "GDLisp",
-"language": "GDScript",
+"class": @"Atom",
+"language": @"GDScript",
+"path": "res://utils/Atom.gd"
+}, {
+"base": "Reference",
+"class": @"Env",
+"language": @"GDScript",
+"path": "res://utils/Env.gd"
+}, {
+"base": "Result",
+"class": @"Error",
+"language": @"GDScript",
+"path": "res://utils/Error.gd"
+}, {
+"base": "Reference",
+"class": @"Evaluator",
+"language": @"GDScript",
+"path": "res://utils/Evaluator.gd"
+}, {
+"base": "Reference",
+"class": @"Exp",
+"language": @"GDScript",
+"path": "res://utils/Exp.gd"
+}, {
+"base": "GDLCollectinWrapper",
+"class": @"GDLArray",
+"language": @"GDScript",
+"path": "res://utils/GDLArray.gd"
+}, {
+"base": "Reference",
+"class": @"GDLCollectinWrapper",
+"language": @"GDScript",
+"path": "res://utils/GDLCollectionWrapper.gd"
+}, {
+"base": "GDLCollectinWrapper",
+"class": @"GDLDictionary",
+"language": @"GDScript",
+"path": "res://utils/GDLDictionary.gd"
+}, {
+"base": "Reference",
+"class": @"GDLisp",
+"language": @"GDScript",
 "path": "res://utils/GDLisp.gd"
 }, {
 "base": "Reference",
-"class": "GDLispSyntaxDoc",
-"language": "GDScript",
+"class": @"GDLispSyntaxDoc",
+"language": @"GDScript",
 "path": "res://utils/GDLispSyntaxDoc.gd"
 }, {
 "base": "Reference",
-"class": "SaveDataUtil",
-"language": "GDScript",
-"path": "res://utils/SaveDataUtil.gd"
+"class": @"Macro",
+"language": @"GDScript",
+"path": "res://utils/Macro.gd"
+}, {
+"base": "Exp",
+"class": @"None",
+"language": @"GDScript",
+"path": "res://utils/None.gd"
 }, {
 "base": "Reference",
-"class": "TestBase",
-"language": "GDScript",
-"path": "res://tests/TestBase.gd"
+"class": @"Procedure",
+"language": @"GDScript",
+"path": "res://utils/Procedure.gd"
+}, {
+"base": "Reference",
+"class": @"Result",
+"language": @"GDScript",
+"path": "res://utils/Result.gd"
+}, {
+"base": "Reference",
+"class": @"Tuple2",
+"language": @"GDScript",
+"path": "res://utils/Tuple2.gd"
 } ]
 _global_script_class_icons={
-"GDLisp": "",
-"GDLispSyntaxDoc": "",
-"SaveDataUtil": "",
-"TestBase": ""
+@"GDLisp": "",
+@"Evaluator": "",
+@"Tuple2": "",
+@"Exp": "",
+@"GDLCollectinWrapper": "",
+@"GDLDictionary": "",
+@"GDLArray": "",
+@"Result": "",
+@"GDLispSyntaxDoc": "",
+@"None": "",
+@"Atom": "",
+@"Procedure": "",
+@"Env": "",
+@"Error": "",
+@"Macro": ""
 }
 
 [application]
@@ -50,18 +116,18 @@ AppManager="*res://utils/AppManager.gd"
 
 send_input={
 "deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":16777221,"unicode":0,"echo":false,"script":null)
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"pressed":false,"keycode":16777221,"physical_keycode":0,"unicode":0,"echo":false,"script":null)
  ]
 }
 super={
 "deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":16777238,"unicode":0,"echo":false,"script":null)
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"pressed":false,"keycode":16777238,"physical_keycode":0,"unicode":0,"echo":false,"script":null)
  ]
 }
 click={
 "deadzone": 0.5,
-"events": [ Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"button_mask":0,"position":Vector2( 0, 0 ),"global_position":Vector2( 0, 0 ),"factor":1.0,"button_index":1,"pressed":false,"doubleclick":false,"script":null)
-, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"button_mask":0,"position":Vector2( 0, 0 ),"global_position":Vector2( 0, 0 ),"factor":1.0,"button_index":2,"pressed":false,"doubleclick":false,"script":null)
+"events": [ Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"button_mask":0,"position":Vector2( 0, 0 ),"global_position":Vector2( 0, 0 ),"factor":1.0,"button_index":1,"pressed":false,"double_click":false,"script":null)
+, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"button_mask":0,"position":Vector2( 0, 0 ),"global_position":Vector2( 0, 0 ),"factor":1.0,"button_index":2,"pressed":false,"double_click":false,"script":null)
  ]
 }
 
