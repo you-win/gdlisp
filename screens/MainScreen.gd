@@ -21,9 +21,12 @@ There are several REPL-only commands for convenience.
 
 const CUSTOM_REPL_COMMANDS := ["help", "syntax", "clear", "reset", "blurb", "exit"]
 
-onready var output: VBoxContainer = $CanvasLayer/OutputContainer/ScrollContainer/Output
-onready var scroll_container: ScrollContainer = $CanvasLayer/OutputContainer/ScrollContainer
-onready var input: TextEdit = $CanvasLayer/InputContainer/Input
+@onready
+var output: VBoxContainer = $CanvasLayer/OutputContainer/ScrollContainer/Output
+@onready
+var scroll_container: ScrollContainer = $CanvasLayer/OutputContainer/ScrollContainer
+@onready
+var input: TextEdit = $CanvasLayer/InputContainer/Input
 
 var _gd_lisp: GDLisp = GDLisp.new()
 
@@ -37,13 +40,13 @@ var _current_input_state: String = ""
 ###############################################################################
 
 func _ready() -> void:
-	if OS.is_debug_build():
-		_create_output_box("Running sanity tests", "uwu")
-		
-		var sanity_test: TestBase = load("res://tests/SanityTests.gd").new()
-		sanity_test.run_tests()
-		
-		_create_output_box("Finished running sanity tests", "owo")
+#	if OS.is_debug_build():
+#		_create_output_box("Running sanity tests", "uwu")
+#
+#		var sanity_test: TestBase = load("res://tests/SanityTests.gd").new()
+#		sanity_test.run_tests()
+#
+#		_create_output_box("Finished running sanity tests", "owo")
 	
 	input.grab_focus()
 	
@@ -57,9 +60,9 @@ func _input(event: InputEvent) -> void:
 	elif _is_super_pressed:
 		if event.is_action_pressed("send_input"):
 			if input.text in CUSTOM_REPL_COMMANDS:
-				_handle_custom_repl_commands()
+				await _handle_custom_repl_commands()
 			else:
-				_send_input()
+				await _send_input()
 			get_tree().set_input_as_handled()
 		elif event.is_action_pressed("ui_up"):
 			_put_history_input(-1)
@@ -84,7 +87,7 @@ func _send_input() -> void:
 	
 	_create_output_box(input.text, gd_lisp_text)
 	
-	_update_input_box()
+	await _update_input_box()
 
 func _create_output_box(upper: String, lower: String) -> void:
 	var output_container: MarginContainer = OUTPUT_CONTAINER.instance()
@@ -120,7 +123,8 @@ func _handle_custom_repl_commands() -> void:
 			output_text = _generate_random_blurb()
 			for c in output.get_children():
 				c.free()
-			yield(get_tree(), "idle_frame")
+#			yield(get_tree(), "idle_frame")
+			await get_tree().process_frame
 		"reset":
 			output_text = "Creating a new GDLisp environment!?"
 			_gd_lisp = GDLisp.new()
@@ -134,15 +138,17 @@ func _handle_custom_repl_commands() -> void:
 	if input.text != "clear":
 		_create_output_box(input.text, output_text)
 	
-	_update_input_box()
+	await _update_input_box()
 
 func _update_input_box() -> void:
-	yield(get_tree(), "idle_frame")
+#	yield(get_tree(), "idle_frame")
+	await get_tree().process_frame
 	
 	while output.get_child_count() > 50:
 		output.get_child(0).free()
 	
-	yield(get_tree(), "idle_frame")
+#	yield(get_tree(), "idle_frame")
+	await get_tree().process_frame
 	
 	scroll_container.scroll_vertical = int(scroll_container.get_v_scrollbar().max_value)
 	
