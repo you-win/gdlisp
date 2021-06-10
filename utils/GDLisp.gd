@@ -500,12 +500,27 @@ class Evaluator:
 
 			return result.get_raw_value()[index]
 
-		func get_se_at_rel(index: int) -> Exp:
-			call_stack.append(index)
+		# func get_se_at_rel(index: int) -> Exp:
+		# 	call_stack.push_back(index)
 
-			last_se = last_se.get_raw_value()[index]
+		# 	last_se = last_se.get_raw_value()[index]
 
-			return last_se
+		# 	return last_se
+
+		func step_inside_se() -> void:
+			call_stack.push_back(current_index)
+
+			last_se = last_se.get_raw_value()[current_index]
+
+		func get_next_exp() -> Exp:
+			var exp_list: Array = last_se.get_raw_value()
+			current_index += 1
+
+			if current_index > exp_list.size():
+				current_index = call_stack.pop_back()
+				return Exp.new(Exp.None, null)
+			
+			return last_se.get_raw_value()
 
 	var _depth: int = 0
 	var _result: Result
@@ -534,12 +549,13 @@ class Evaluator:
 		
 		while true:
 			_eval_stack.current_index += 1
-			var se: Exp = _eval_stack.get_se_at_rel(_eval_stack.current_index)
+			
+			var current_exp: Exp = _eval_stack.get_next_exp()
 
-			if se.type == Exp.Atom:
-				match se.get_value().type:
+			if current_exp.type == Exp.Atom:
+				match current_exp.get_value().type:
 					Atom.Sym:
-						var raw_value = se.get_raw_value()
+						var raw_value = current_exp.get_raw_value()
 						var env_value = env.find(raw_value)
 						
 						if env_value == null:
@@ -552,12 +568,15 @@ class Evaluator:
 						atom_values.append(env_value)
 					Atom.Str:
 						# eval_value = se.get_raw_value()
-						atom_values.append(se.get_raw_value())
+						atom_values.append(current_exp.get_raw_value())
 					Atom.Num:
 						# eval_value = se.get_raw_value()
-						atom_values.append(se.get_raw_value())
-			elif se.type == Exp.List:
-				var list: Array = se.get_value()
+						atom_values.append(current_exp.get_raw_value())
+			elif current_exp.type == Exp.List:
+				_eval_stack.step_inside_se()
+
+				# TODO comment out late
+				var list: Array = current_exp.get_value()
 				if list.size() != 0:
 					match list[0].get_raw_value():
 						"if": # (if () () ())
@@ -713,6 +732,9 @@ class Evaluator:
 								_result.set_error(eval_value)
 								return
 							eval_value = procedure.call_func(args)
+			else:
+				# Implicitly step out of the current expression
+				continue
 		
 		_result.set_value(eval_value)
 		
