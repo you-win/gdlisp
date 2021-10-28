@@ -1,5 +1,5 @@
 class_name SaveDataUtil
-extends Reference
+extends RefCounted
 
 const SAVE_FILE_EXTENSION: String = "fpwb"
 
@@ -15,7 +15,7 @@ var save_directory_path: String
 # Builtin functions                                                           #
 ###############################################################################
 
-func _init() -> void:
+func _init():
 	if not OS.is_debug_build():
 		save_directory_path = OS.get_executable_path().get_base_dir()
 	else:
@@ -30,12 +30,6 @@ func _init() -> void:
 ###############################################################################
 
 func _load_metadata() -> Dictionary:
-	"""
-	metadata is in format:
-	{
-		"last_save_file": String
-	}
-	"""
 	var result: Dictionary = {}
 	
 	var metadata_exists: bool = false
@@ -52,21 +46,22 @@ func _load_metadata() -> Dictionary:
 	
 	if metadata_exists:
 		var metadata: Dictionary = load_data(METADATA_FILE_NAME)
-		if not metadata.empty():
+		if not metadata.is_empty():
 			
 			pass
 	
 	return result
 
 func _save_metadata(last_save_file: String) -> void:
-	var save_data: Dictionary = METADATA_TEMPLATE.duplicate()
-	save_data[LAST_SAVE_FILE_KEY] = last_save_file
+	var data: Dictionary = METADATA_TEMPLATE.duplicate()
+	data[LAST_SAVE_FILE_KEY] = last_save_file
 	
 	var file_path: String = "%s/%s.%s" % [self.save_directory_path, self.METADATA_FILE_NAME, self.SAVE_FILE_EXTENSION]
 	var save_file: File = File.new()
 	save_file.open(file_path, File.WRITE)
 	
-	save_file.store_string(to_json(save_data))
+	var json: JSON = JSON.new()
+	save_file.store_string(json.stringify(data))
 	
 	save_file.close()
 
@@ -90,17 +85,12 @@ func does_metadata_exist() -> bool:
 	return result
 
 func load_data(file_name: String = "") -> Dictionary:
-	"""
-	Loads a .fpwb file from the given directory
-	
-	returns an empty dictionary if no file is found
-	"""
 	var result: Dictionary = {}
 	
-	if file_name.empty():
+	if file_name.is_empty():
 		var metadata: Dictionary = _load_metadata()
 		
-		if metadata.empty():
+		if metadata.is_empty():
 			return result
 		
 		file_name = metadata[LAST_SAVE_FILE_KEY]
@@ -110,28 +100,25 @@ func load_data(file_name: String = "") -> Dictionary:
 	var save_file: File = File.new()
 	save_file.open(file_path, File.READ)
 	
-	var data: JSONParseResult = JSON.parse(save_file.get_as_text())
-	if (data.error == OK and typeof(data.result) == TYPE_DICTIONARY):
-		result = data.result
+	var json: JSON = JSON.new()
+	if json.parse(save_file.get_as_text()) == OK:
+		result = json.get_data()
+#	if (data.error == OK and typeof(data.result) == TYPE_DICTIONARY):
+#		result = data.result
 	
 	save_file.close()
 	
 	return result
 
 func save_data(file_name: String, data: Dictionary) -> void:
-	"""
-	data is in format:
-	{
-		...
-	}
-	"""
 	var file_path: String = "%s/%s.%s" % [self.save_directory_path, file_name, self.SAVE_FILE_EXTENSION]
 	var data_to_save: Dictionary = data["data"]
 	
 	var save_file: File = File.new()
 	save_file.open(file_path, File.WRITE)
 	
-	save_file.store_string(to_json(data_to_save))
+	var json: JSON = JSON.new()
+	save_file.store_string(json.stringify(data_to_save))
 	
 	save_file.close()
 	

@@ -8,27 +8,27 @@
 
 config_version=4
 
-_global_script_classes=[ {
-"base": "Reference",
-"class": "GDLisp",
-"language": "GDScript",
+_global_script_classes=[{
+"base": "RefCounted",
+"class": &"GDLisp",
+"language": &"GDScript",
 "path": "res://utils/GDLisp.gd"
 }, {
-"base": "Reference",
-"class": "GDLispSyntaxDoc",
-"language": "GDScript",
+"base": "RefCounted",
+"class": &"GDLispSyntaxDoc",
+"language": &"GDScript",
 "path": "res://utils/GDLispSyntaxDoc.gd"
 }, {
-"base": "Reference",
-"class": "SaveDataUtil",
-"language": "GDScript",
+"base": "RefCounted",
+"class": &"SaveDataUtil",
+"language": &"GDScript",
 "path": "res://utils/SaveDataUtil.gd"
 }, {
-"base": "Reference",
-"class": "TestBase",
-"language": "GDScript",
+"base": "RefCounted",
+"class": &"TestBase",
+"language": &"GDScript",
 "path": "res://tests/TestBase.gd"
-} ]
+}]
 _global_script_class_icons={
 "GDLisp": "",
 "GDLispSyntaxDoc": "",
@@ -50,19 +50,19 @@ AppManager="*res://utils/AppManager.gd"
 
 send_input={
 "deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":16777221,"unicode":0,"echo":false,"script":null)
- ]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"pressed":false,"keycode":16777221,"physical_keycode":0,"unicode":0,"echo":false,"script":null)
+]
 }
 super={
 "deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":16777238,"unicode":0,"echo":false,"script":null)
- ]
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"pressed":false,"keycode":16777238,"physical_keycode":0,"unicode":0,"echo":false,"script":null)
+]
 }
 click={
 "deadzone": 0.5,
-"events": [ Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"button_mask":0,"position":Vector2( 0, 0 ),"global_position":Vector2( 0, 0 ),"factor":1.0,"button_index":1,"pressed":false,"doubleclick":false,"script":null)
-, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"button_mask":0,"position":Vector2( 0, 0 ),"global_position":Vector2( 0, 0 ),"factor":1.0,"button_index":2,"pressed":false,"doubleclick":false,"script":null)
- ]
+"events": [Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"button_mask":0,"position":Vector2(0, 0),"global_position":Vector2(0, 0),"factor":1.0,"button_index":1,"pressed":false,"double_click":false,"script":null)
+, Object(InputEventMouseButton,"resource_local_to_scene":false,"resource_name":"","device":0,"window_id":0,"store_command":true,"alt_pressed":false,"shift_pressed":false,"meta_pressed":false,"command_pressed":false,"button_mask":0,"position":Vector2(0, 0),"global_position":Vector2(0, 0),"factor":1.0,"button_index":2,"pressed":false,"double_click":false,"script":null)
+]
 }
 
 [physics]

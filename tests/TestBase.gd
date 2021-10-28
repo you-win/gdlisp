@@ -1,5 +1,5 @@
 class_name TestBase
-extends Reference
+extends RefCounted
 
 ###############################################################################
 # Builtin functions                                                           #

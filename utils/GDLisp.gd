@@ -1,11 +1,11 @@
 class_name GDLisp
-extends Reference
+extends RefCounted
 
 class Result:
 	var _tuple: Tuple2
 
-	func _init(v0, v1) -> void:
-		_tuple = Tuple2.new(v0, v1)
+	func _init(v0, v1):
+		_tuple = GDLisp.Tuple2.new(v0, v1)
 
 	func unwrap():
 		# Error
@@ -16,10 +16,13 @@ class Result:
 			return _tuple.g0()
 
 	func unwrap_err() -> String:
-		return _tuple.g1()
+		var r = _tuple.g1()
+		if r == null:
+			r = ""
+		return r
 
 	func is_ok() -> bool:
-		return not _tuple.g1()
+		return _tuple.g1() == null
 
 	func is_err() -> bool:
 		return not is_ok()
@@ -31,20 +34,22 @@ class Result:
 		_tuple.s1(value)
 
 class Error extends Exp:
-	func _init(error_message: String, exp_type: int = Exp.Atom).(exp_type, error_message) -> void:
+	func _init(error_message: String, exp_type: int = Exp.Atom):
+		super(exp_type, error_message)
 		self.type = exp_type
 		self.value = error_message
 
 class None extends Exp:
-	func _init(exp_type: int = Exp.None, exp_value = null).(exp_type, exp_value) -> void:
+	func _init(exp_type: int = Exp.None, exp_value = null):
+		super(exp_type, exp_value)
 		self.type = exp_type
 		self.value = exp_value
 
 class Tuple2:
-	var _v0
-	var _v1
+	var _v0 = null
+	var _v1 = null
 
-	func _init(v0, v1) -> void:
+	func _init(v0, v1):
 		_v0 = v0
 		_v1 = v1
 
@@ -61,9 +66,10 @@ class Tuple2:
 		_v1 = value
 
 class Tuple3 extends Tuple2:
-	var _v2
+	var _v2 = null
 
-	func _init(v0, v1, v2).(v0, v1) -> void:
+	func _init(v0, v1, v2):
+		super(v0, v1)
 		_v2 = v2
 
 	func g2():
@@ -91,21 +97,21 @@ class GDLCollectionWrapper:
 		return "GDLCollectionWrapper:%s" % str(_value)
 
 class GDLArray extends GDLCollectionWrapper:
-	func _init(value: Array = []) -> void:
+	func _init(value: Array = []):
 		_value = value
 	
 	func append(value) -> void:
 		_value.append(value)
 
 class GDLDictionary extends GDLCollectionWrapper:
-	func _init(value: Dictionary = {}) -> void:
+	func _init(value: Dictionary = {}):
 		_value = value
 
 class Env:
 	var _inner: Dictionary # This scope
 	var _outer: Env # Outer scope
 
-	func _init(outer: Env = null, param_names: Array = [], param_values: Array = []) -> void:
+	func _init(outer: Env = null, param_names: Array = [], param_values: Array = []):
 		_inner = {}
 		if outer: # If null, then there is probably no global scope
 			_outer = outer
@@ -117,7 +123,7 @@ class Env:
 		for i in param_names.size():
 			_inner[param_names[i]] = param_values[i]
 
-	func find(key: String):
+	func find(key: String) -> Variant:
 		if key in _inner:
 			return _inner[key]
 		elif _outer:
@@ -143,23 +149,23 @@ class Env:
 
 var global_environment_dictionary: Dictionary = {
 	# Operators
-	"+": funcref(EnvUtils, "plus"),
-	"-": funcref(EnvUtils, "minus"),
-	"*": funcref(EnvUtils, "multiply"),
-	"/": funcref(EnvUtils, "divide"),
-	"==": funcref(EnvUtils, "equals"),
-	"!=": funcref(EnvUtils, "not_equals"),
-	"<": funcref(EnvUtils, "less_than"),
-	"<=": funcref(EnvUtils, "less_than_or_equal_to"),
-	">": funcref(EnvUtils, "greater_than"),
-	">=": funcref(EnvUtils, "greater_than_or_equal_to"),
+	"+": Callable(EnvUtils, "plus"),
+	"-": Callable(EnvUtils, "minus"),
+	"*": Callable(EnvUtils, "multiply"),
+	"/": Callable(EnvUtils, "divide"),
+	"==": Callable(EnvUtils, "equals"),
+	"!=": Callable(EnvUtils, "not_equals"),
+	"<": Callable(EnvUtils, "less_than"),
+	"<=": Callable(EnvUtils, "less_than_or_equal_to"),
+	">": Callable(EnvUtils, "greater_than"),
+	">=": Callable(EnvUtils, "greater_than_or_equal_to"),
 	
 	# Primitives
 	"true": true,
 	"false": false,
 	
 	# Builtin functions
-	"print": funcref(EnvUtils, "print"),
+	"print": Callable(EnvUtils, "print"),
 	"self": self,
 
 	# Label indexing
@@ -173,9 +179,26 @@ class EnvUtils:
 		if a.size() < 2:
 			return a[0]
 
-		var result = a[0]
+		var result = str(a[0])
+		var operation_type: int = TYPE_STRING
+		
+		if str(result).is_valid_int():
+			result = str(result).to_int()
+			operation_type = TYPE_INT
+		elif str(result).is_valid_float():
+			result = str(result).to_float()
+			operation_type = TYPE_FLOAT
+		
 		for i in a.slice(1, a.size() - 1):
-			result += i
+			var f = str(i)
+			match operation_type:
+				TYPE_INT:
+					f = str(f).to_int()
+				TYPE_FLOAT:
+					f = str(f).to_float()
+				TYPE_STRING:
+					pass
+			result += f
 		return result
 	
 	static func minus(a: Array):
@@ -244,11 +267,11 @@ class EnvUtils:
 		print(result)
 
 class Atom:
-	enum { Sym = 0, Num, Str }
-	var type: int
+	enum { Sym = 0, Num = 1, Str = 2 }
+	var type
 	var value
 	
-	func _init(atom_type: int, atom_value) -> void:
+	func _init(atom_type, atom_value):
 		type = atom_type
 		value = atom_value
 	
@@ -261,55 +284,60 @@ class Atom:
 		return value
 
 class Exp:
-	enum { None = 0, Atom, List }
-	var type: int
+	enum Type { None = 0, Atom, List }
+	var type: Type
 	var value
 	
-	func _init(exp_type: int, exp_value) -> void:
+	func _init(exp_type: int, exp_value):
 		type = exp_type
 		value = exp_value
 	
 	func _to_string() -> String:
-		if type == Atom:
+		if type == Type.Atom:
 			return value.to_string()
 		return str(value)
 	
 	func append(v) -> void:
 		match type:
-			List:
+			Type.List:
 				if typeof(v) == TYPE_ARRAY:
 					(value as Array).append_array(v)
 				else:
 					(value as Array).append(v)
-			Atom:
+			Type.Atom:
 				AppManager.log_message("Tried to append to an Atom")
 	
 	func get_value():
 		match type:
-			List:
+			Type.List:
 				return (value as Array)
-			Atom:
+			Type.Atom:
 				return value
 	
 	func get_raw_value():
 		match type:
-			List:
+			Type.List:
 				return (value as Array)
-			Atom:
+			Type.Atom:
 				return value.get_value()
 
 class Tokenizer:
-	enum { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation, ParseBracket, ParseEscapeCharacter }
+	enum Type { None = 0, ParseExpression, ParseSpace, ParseSymbol, ParseQuotation, ParseBracket, ParseEscapeCharacter }
 
-	var current_type: int = None
+	var current_type: Type = Type.None
 	var is_escape_character: bool = false
 
-	var token_builder: PoolStringArray = PoolStringArray()
+	var token_builder: PackedStringArray = []
 
 	func _build_token(result: Array) -> void:
 		if token_builder.size() != 0:
-			result.append(token_builder.join(""))
-			token_builder = PoolStringArray()
+			var token: String = ""
+			for i in token_builder:
+				token += i
+			result.append(token)
+#			result.append("")
+#			result.append(token_builder.append("")) # TODO this is busted
+			token_builder = []
 
 	func tokenize(value: String) -> Result:
 		var result: Array = []
@@ -321,7 +349,7 @@ class Tokenizer:
 		
 		# Checks for raw strings of size 1
 		if value.length() <= 2:
-			return Result.new(result, "Program too short")
+			return GDLisp.Result.new(result, "Program too short")
 
 		for i in value.length():
 			var c: String = value[i]
@@ -329,14 +357,14 @@ class Tokenizer:
 				if is_escape_character: # This is a double quote literal
 					token_builder.append(c)
 					is_escape_character = false
-				elif current_type == ParseQuotation: # Close the double quote
+				elif current_type == Type.ParseQuotation: # Close the double quote
 					token_builder.append(c)
-					current_type = None
+					current_type = Type.None
 					_build_token(result)
 				else: # Open the double quote
 					token_builder.append(c)
-					current_type = ParseQuotation
-			elif current_type == ParseQuotation:
+					current_type = Type.ParseQuotation
+			elif current_type == Type.ParseQuotation:
 				if c == "\\":
 					is_escape_character = true
 				else:
@@ -346,42 +374,42 @@ class Tokenizer:
 					"(":
 						paren_counter += 1
 						_build_token(result)
-						current_type = ParseExpression
+						current_type = Type.ParseExpression
 						result.append(c)
 					")":
 						paren_counter -= 1
 						_build_token(result)
-						current_type = None
+						current_type = Type.None
 						result.append(c)
 					"[":
 						square_bracket_counter += 1
 						_build_token(result)
-						current_type = ParseBracket
+						current_type = Type.ParseBracket
 						result.append(c)
 					"]":
 						square_bracket_counter -= 1
 						_build_token(result)
-						current_type = None
+						current_type = Type.None
 						result.append(c)
 					"{":
 						curly_bracket_counter += 1
 						_build_token(result)
-						current_type = ParseBracket
+						current_type = Type.ParseBracket
 						result.append(c)
 					"}":
 						curly_bracket_counter -= 1
 						_build_token(result)
-						current_type = None
+						current_type = Type.None
 						result.append(c)
 					" ", "\r\n", "\n", "\t":
 						_build_token(result)
-						current_type = ParseSpace
+						current_type = Type.ParseSpace
 					# "\\":
 						# if current_type == ParseQuotation:
 							# is_escape_character = true
 					_:
-						current_type = ParseSymbol
-						token_builder.append(c)
+						current_type = Type.ParseSymbol
+						token_builder.append(str(c))
 		
 		if paren_counter != 0:
 			result.clear()
@@ -395,7 +423,7 @@ class Tokenizer:
 			result.clear()
 			error = "Mismatched curly brackets"
 
-		return Result.new(result, error)
+		return GDLisp.Result.new(result, error)
 
 class Parser:
 	var _depth: int = 0
@@ -403,11 +431,11 @@ class Parser:
 
 	var _is_quoted: bool = false
 
-	func _init(result: Result) -> void:
+	func _init(result: Result):
 		_result = result
 	
 	func parse(tokens: Array) -> Exp:
-		var list_expression: Exp = Exp.new(Exp.List, [])
+		var list_expression: Exp = GDLisp.Exp.new(GDLisp.Exp.Type.List, [])
 
 		if _result.is_err():
 			return _error("Aborting due to previous error")
@@ -430,7 +458,7 @@ class Parser:
 				return _error("Unexpected )")
 			"[":
 				_depth += 1
-				list_expression.append(Exp.new(Exp.Atom, _atom("list")))
+				list_expression.append(GDLisp.Exp.new(GDLisp.Exp.Type.Atom, _atom("list")))
 				while tokens[tokens.size() - 1] != "]":
 					list_expression.append(parse(tokens))
 				tokens.pop_back() # Remove last ']'
@@ -438,7 +466,7 @@ class Parser:
 				return _error("Unexpected ]")
 			"{":
 				_depth += 1
-				list_expression.append(Exp.new(Exp.Atom, _atom("table")))
+				list_expression.append(GDLisp.Exp.new(GDLisp.Exp.Type.Atom, _atom("table")))
 				while tokens[tokens.size() - 1] != "}":
 					list_expression.append(parse(tokens))
 				tokens.pop_back() # Remove last '}'
@@ -446,11 +474,11 @@ class Parser:
 				return _error("Unexpected }")
 			"'":
 				_is_quoted = true
-				return Exp.new(Exp.Atom, _atom("'"))
+				return GDLisp.Exp.new(GDLisp.Exp.Type.Atom, _atom("'"))
 			_:
-				return Exp.new(Exp.Atom, _atom(token))
+				return GDLisp.Exp.new(GDLisp.Exp.Type.Atom, _atom(token))
 
-		_depth -= 1
+		_depth -= 1 # TODO godot 4 says this is unreachable
 		if _depth == 0:
 			_result.set_value(list_expression)
 
@@ -458,15 +486,15 @@ class Parser:
 	
 	func _atom(token: String) -> Atom:
 		if token.begins_with('"'):
-			return Atom.new(Atom.Str, token.substr(1, token.length() - 2))
+			return GDLisp.Atom.new(GDLisp.Atom.Str, token.substr(1, token.length() - 2))
 		elif token.is_valid_float():
-			return Atom.new(Atom.Num, token.to_float())
+			return GDLisp.Atom.new(GDLisp.Atom.Num, token.to_float())
 		else:
-			return Atom.new(Atom.Sym, token)
+			return GDLisp.Atom.new(GDLisp.Atom.Sym, token)
 
 	func _error(error_message: String) -> Exp:
 		_result.set_error(error_message)
-		return None.new()
+		return GDLisp.None.new()
 
 class Evaluator:
 	var _depth: int = 0
@@ -476,7 +504,7 @@ class Evaluator:
 
 	var _s_expression_stack: Array = []
 
-	func _init(result: Result, env: Env) -> void:
+	func _init(result: Result, env: Env):
 		_result = result
 		env.add("__evaluator__", self)
 
@@ -486,9 +514,10 @@ class Evaluator:
 		var eval_value
 		_depth += 1
 		
-		if v.type == Exp.Atom:
+		if v.type == GDLisp.Exp.Type.Atom:
 			match v.get_value().type:
-				Atom.Sym:
+#				self.Atom.Sym: # TODO 
+				0:
 					var raw_value = v.get_raw_value()
 					var env_value = env.find(raw_value)
 					
@@ -499,11 +528,13 @@ class Evaluator:
 						continue
 					
 					eval_value = env_value
-				Atom.Str:
+#				self.Atom.Str:
+				1:
 					eval_value = v.get_raw_value()
-				Atom.Num:
+#				self.Atom.Num:
+				2:
 					eval_value = v.get_raw_value()
-		elif v.type == Exp.List:
+		elif v.type == GDLisp.Exp.Type.List:
 			_s_expression_stack.push_back(v)
 			var list: Array = v.get_value()
 			if list.size() != 0:
@@ -524,7 +555,7 @@ class Evaluator:
 					"do": # (do () ...)
 						if not _has_enough_args(list.size(), 2, "do"):
 							return
-						var inner_env = Env.new(env)
+						var inner_env = GDLisp.Env.new(env)
 						for s in list.slice(1, list.size()):
 							eval_value = eval(s, inner_env)
 					"while": # (while (test) ())
@@ -538,6 +569,7 @@ class Evaluator:
 						pass
 					"def": # Create new variable in the current scope (def () ())
 						if not _has_exact_args(list.size(), 3, "def"):
+							print_debug("hello")
 							return
 						var symbol = list[1]
 						var expression = list[2]
@@ -552,12 +584,12 @@ class Evaluator:
 							_result.set_error(eval_value)
 							return
 					"list": # Returns a Godot array (list () ...)
-						eval_value = GDLArray.new()
+						eval_value = GDLisp.GDLArray.new()
 						if list.size() >= 2:
 							for item in list.slice(1, list.size() - 1, 1, true):
 								eval_value.append(eval(item, env))
 					"table":
-						eval_value = GDLDictionary.new()
+						eval_value = GDLisp.GDLDictionary.new()
 						if list.size() >= 2:
 							# Check for equal pairs
 							if not (list.size() - 1) % 2 == 0:
@@ -583,12 +615,12 @@ class Evaluator:
 							for i in arg_names.size():
 								arg_names[i] = arg_names[i].get_raw_value()
 
-						var expressions = Exp.new(Exp.List, [])
-						expressions.append(Exp.new(Exp.Atom, Atom.new(Atom.Sym, "do")))
+						var expressions = GDLisp.Exp.new(GDLisp.Exp.Type.List, [])
+						expressions.append(GDLisp.Exp.new(GDLisp.Exp.Type.Atom, GDLisp.Atom.new(GDLisp.Atom.Sym, "do")))
 						for expression in list.slice(2, list.size() - 1, 1, true):
 							expressions.append(expression)
 
-						eval_value = Procedure.new(arg_names, expressions, Env.new(env))
+						eval_value = GDLisp.Procedure.new(arg_names, expressions, GDLisp.Env.new(env))
 					"macro": # (macro [] () ...)
 						if not _has_enough_args(list.size(), 3, "macro"):
 							return
@@ -600,7 +632,7 @@ class Evaluator:
 							for i in arg_names.size():
 								arg_names[i] = arg_names[i].get_raw_value()
 
-						eval_value = Macro.new(arg_names, list.slice(2, list.size() - 1, 1, true), Env.new(env))
+						eval_value = GDLisp.Macro.new(arg_names, list.slice(2, list.size() - 1, 1, true), GDLisp.Env.new(env))
 					"raw": # (raw () () ...)
 						if not _has_enough_args(list.size(), 3, "raw"):
 							return
@@ -630,37 +662,37 @@ class Evaluator:
 							_result.set_error(eval_value)
 							return
 						eval_value = godot_expression.execute()
-					"label": # Label all nested S-expressions (label ())
-						if not _has_exact_args(list.size(), 2, "label"):
-							return
-						var label_name = list[1].get_raw_value()
-						var label_data: LabelData = LabelData.new(label_name, env, _s_expression_stack.slice(0, _s_expression_stack.size() - 2))
-						
-						env.find("__labels__")[label_name] = label_data
-					"goto": # Goto specified label (goto ())
-						if not _has_exact_args(list.size(), 2, "goto"):
-							return
-						var global_label_dictionary: Dictionary = env.find("__labels__")
-						var label_data: LabelData
-						
-						# TODO implement breadth-first search for labels
-						if not global_label_dictionary.has(list[1].get_raw_value()): # label was not cached
-							for i in _s_expression_stack[0].get_raw_value():
-								if i.type == Exp.List:
-									pass
-						else:
-							label_data = global_label_dictionary[list[1].get_raw_value()]
-
-						# TODO fill this out
-					"import": # Import file from relative path (import ())
-						pass
+#					"label": # Label all nested S-expressions (label ())
+#						if not _has_exact_args(list.size(), 2, "label"):
+#							return
+#						var label_name = list[1].get_raw_value()
+#						var label_data: LabelData = self.LabelData.new(label_name, env, _s_expression_stack.slice(0, _s_expression_stack.size() - 2))
+#
+#						env.find("__labels__")[label_name] = label_data
+#					"goto": # Goto specified label (goto ())
+#						if not _has_exact_args(list.size(), 2, "goto"):
+#							return
+#						var global_label_dictionary: Dictionary = env.find("__labels__")
+#						var label_data: LabelData
+#
+#						# TODO implement breadth-first search for labels
+#						if not global_label_dictionary.has(list[1].get_raw_value()): # label was not cached
+#							for i in _s_expression_stack[0].get_raw_value():
+#								if i.type == self.Exp.Type.List:
+#									pass
+#						else:
+#							label_data = global_label_dictionary[list[1].get_raw_value()]
+#
+#						# TODO fill this out
+#					"import": # Import file from relative path (import ())
+#						pass
 					_:
 						var procedure = eval(list[0], env)
-						if procedure is Macro:
+						if procedure is GDLisp.Macro:
 							# We don't want to evaluate anything yet until the macro is expanded
-							eval_value = eval(procedure.expand(list.slice(1, list.size() - 1, 1, true)), Env.new(env))
+							eval_value = eval(procedure.expand(list.slice(1, list.size() - 1, 1, true)), GDLisp.Env.new(env))
 							continue
-						elif (not procedure is FuncRef and not procedure is Procedure):
+						elif (not procedure is Callable and not procedure is GDLisp.Procedure):
 							eval_value = procedure
 							# NOTE this is the catch-all match, so this continue is okay
 							continue
@@ -671,7 +703,7 @@ class Evaluator:
 							eval_value = "Invalid procedure: %s" % procedure
 							_result.set_error(eval_value)
 							return
-						eval_value = procedure.call_func(args)
+						eval_value = procedure.call(args)
 		
 		_depth -= 1
 		
@@ -697,12 +729,12 @@ class Procedure:
 	var stored_expressions: Exp
 	var stored_env: Env
 
-	func _init(arg_names: Array, expressions: Exp, env: Env) -> void:
+	func _init(arg_names: Array, expressions: Exp, env: Env):
 		stored_arg_names = arg_names
 		stored_expressions = expressions
 		stored_env = env
 
-	func call_func(arg_values: Array):
+	func call(arg_values: Array):
 		for i in stored_arg_names.size():
 			stored_env.add(stored_arg_names[i], arg_values[i])
 		
@@ -711,29 +743,21 @@ class Procedure:
 # TODO only works for single-level macros, nested expressions don't work
 # probably want to write a custom eval function that only evaluates atoms
 class Macro:
-	"""
-	Example
-	(def infix (macro [code]
-		(raw code get 0)
-		(raw code get 1)
-		(raw code get 2)))
-	(infix (1 + 1))
-	"""
 	var stored_arg_names: Array
 	var stored_expression: Array
 	var stored_env: Env
 
-	func _init(arg_names: Array, expression: Array, env: Env) -> void:
+	func _init(arg_names: Array, expression: Array, env: Env):
 		stored_arg_names = arg_names
 		stored_expression = expression
 		stored_env = env
 
 	func expand(expressions: Array) -> Exp:
-		var result_expression := Exp.new(Exp.List, [])
+		var result_expression: Exp = GDLisp.Exp.new(GDLisp.Exp.Type.List, [])
 		
 		for i in stored_arg_names.size():
 			var raw_value = expressions[i].get_raw_value()
-			stored_env.add(stored_arg_names[i], GDLArray.new(raw_value))
+			stored_env.add(stored_arg_names[i], GDLisp.GDLArray.new(raw_value))
 
 		var evaluator: Evaluator = stored_env.find("__evaluator__")
 		var is_quoted: bool = false
@@ -754,7 +778,7 @@ class LabelData:
 	var scope: Env
 	var stack: Array
 
-	func _init(label_name: String, outer_env: Env, label_stack: Array) -> void:
+	func _init(label_name: String, outer_env: Env, label_stack: Array):
 		name = label_name
 		scope = outer_env
 		stack = label_stack
@@ -763,7 +787,7 @@ class LabelData:
 # Builtin functions                                                           #
 ###############################################################################
 
-func _init() -> void:
+func _init():
 	# NOTE we don't duplicate here since it doesn't really matter + it's a global
 	global_env._inner = global_environment_dictionary
 
@@ -802,7 +826,7 @@ func parse_string(value: String):
 		return tokenize_result.unwrap_err()
 	var tokens: Array = tokenize_result.unwrap()
 	
-	tokens.invert()
+	tokens.reverse()
 
 	var parsed_tokens_array: Array = []
 	while tokens.size() != 0:

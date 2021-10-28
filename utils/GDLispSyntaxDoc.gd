@@ -1,5 +1,5 @@
 class_name GDLispSyntaxDoc
-extends Reference
+extends RefCounted
 
 ###############################################################################
 # Builtin functions                                                           #

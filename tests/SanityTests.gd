@@ -23,7 +23,7 @@ func test_simple_tokenizer() -> void:
 
 func test_simple_parser() -> void:
 	var input: Array = ['(', 'print', '"hello world"', ')']
-	input.invert()
+	input.reverse()
 	
 	var result = _create_empty_result()
 	var parser := GDLisp.Parser.new(result)

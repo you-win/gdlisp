@@ -5,13 +5,13 @@ extends Control
 ###############################################################################
 
 func _ready() -> void:
-	find_node("Sanity").connect("pressed", self, "_sanity_test")
-	find_node("Tokenizer").connect("pressed", self, "_tokenizer_test")
-	find_node("Parser").connect("pressed", self, "_parser_test")
-	find_node("Evaluator").connect("pressed", self, "_evaluator_test")
-	find_node("EndToEnd").connect("pressed", self, "_end_to_end_test")
+	find_node("Sanity").pressed.connect(_sanity_test)
+	find_node("Tokenizer").pressed.connect(_tokenizer_test)
+	find_node("Parser").pressed.connect(_parser_test)
+	find_node("Evaluator").pressed.connect(_evaluator_test)
+	find_node("EndToEnd").pressed.connect(_end_to_end_test)
 	
-	find_node("RunAll").connect("pressed", self, "_run_all_tests")
+	find_node("RunAll").pressed.connect(_run_all_tests)
 
 ###############################################################################
 # Connections                                                                 #
