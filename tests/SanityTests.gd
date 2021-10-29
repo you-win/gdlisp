@@ -184,7 +184,7 @@ func test_macro_simple() -> void:
 	(raw code get 2)))
 
 (infix (1 + 1))
-	""")
+""")
 	
 	assert(output[1] == 2)
 
