@@ -66,6 +66,8 @@ const EnvBuiltins = Gdlisp.EnvBuiltins
 const GdlArray = Gdlisp.GdlArray
 const GdlDictionary = Gdlisp.GdlDictionary
 
+const Stack = Gdlisp.Stack
+
 const Exp = Gdlisp.Exp
 
 #endregion

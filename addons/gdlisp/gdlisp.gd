@@ -38,11 +38,16 @@ class Error:
 
 		#region Compiler
 
+		# Preprocessor
+		INVALID_PREPROCESSOR_REPLACEMENTS,
+
+		# Tokenizer
 		PROGRAM_TOO_SHORT,
 		MISMATCHED_PARENS,
 		MISMATCHED_SQUARE_BRACKETS,
 		MISMATCHED_CURLY_BRACKETS,
 
+		# Parser
 		DEPTH_NOT_ZERO,
 
 		#endregion
@@ -186,6 +191,63 @@ class GdlDictionary extends GdlCollection:
 	func duplicate() -> GdlDictionary:
 		return GdlDictionary.new(.duplicate())
 
+class Stack:
+	var _stack := [] # Exp
+	
+	var is_invalid := false
+
+	func push(e: Exp) -> void:
+		"""
+		Pushes an expression onto the stack. Depending on the expression type,
+		the expression is either appended to the last element or appended
+		to the stack
+		"""
+		if e.type == Exp.Type.LIST:
+			_stack.push_back(e)
+		else:
+			back().append(e)
+
+	func pop() -> Exp:
+		"""
+		Pops the last expression from the stack if there are at least 2 items
+
+		After the expression is popped, it is added to the new last expression
+		"""
+		if _stack.size() < 1:
+			printerr("Invalid pop, nothing on stack")
+			return null
+
+		var e: Exp = _stack.pop_back()
+		var parent: Exp = back()
+		if parent:
+			if not parent.append(e) == OK:
+				is_invalid = true
+		return e
+
+	func back() -> Exp:
+		"""
+		Returns the last expression on the stack or null if there is no expression
+
+		Does not use the builtin back() function to avoid stderr logs
+		"""
+		return _stack[-1] if _stack.size() > 0 else null
+
+	func size() -> int:
+		"""
+		Gets the size of the stack
+		"""
+		return _stack.size()
+
+	func finish() -> Exp:
+		"""
+		Pops everything from the stack so that the stack is completely
+		empty
+		"""
+		while _stack.size() > 1:
+			pop()
+
+		return _stack.pop_back()
+
 class Exp:
 	enum Type {
 		NONE = 0,
@@ -228,6 +290,28 @@ class Exp:
 ###############################################################################
 # Compiler                                                                    #
 ###############################################################################
+
+class Preprocessor:
+	var replacements := {} # Search key: String -> replacement value: String
+
+	var _is_valid := true
+
+	func _init(p_replacements: Dictionary) -> void:
+		replacements = p_replacements
+
+		var keys := replacements.keys()
+		for val in replacements.values():
+			if val in keys:
+				_is_valid = false
+
+	func run(input: String) -> Result:
+		if not _is_valid:
+			return Result.err(Error.Code.INVALID_PREPROCESSOR_REPLACEMENTS)
+
+		for key in replacements.keys():
+			input = input.replace(key, replacements[key])
+
+		return Result.ok()
 
 class Tokenizer:
 	enum Token {
@@ -379,63 +463,6 @@ class Tokenizer:
 		return Result.ok(_result)
 
 class Parser:
-	class Stack:
-		var _stack := [] # Exp
-		
-		var is_invalid := false
-
-		func push(e: Exp) -> void:
-			"""
-			Pushes an expression onto the stack. Depending on the expression type,
-			the expression is either appended to the last element or appended
-			to the stack
-			"""
-			if e.type == Exp.Type.LIST:
-				_stack.push_back(e)
-			else:
-				back().append(e)
-
-		func pop() -> Exp:
-			"""
-			Pops the last expression from the stack if there are at least 2 items
-
-			After the expression is popped, it is added to the new last expression
-			"""
-			if _stack.size() < 1:
-				printerr("Invalid pop, nothing on stack")
-				return null
-
-			var e: Exp = _stack.pop_back()
-			var parent: Exp = back()
-			if parent:
-				if not parent.append(e) == OK:
-					is_invalid = true
-			return e
-
-		func back() -> Exp:
-			"""
-			Returns the last expression on the stack or null if there is no expression
-
-			Does not use the builtin back() function to avoid stderr logs
-			"""
-			return _stack[-1] if _stack.size() > 0 else null
-
-		func size() -> int:
-			"""
-			Gets the size of the stack
-			"""
-			return _stack.size()
-
-		func finish() -> Exp:
-			"""
-			Pops everything from the stack so that the stack is completely
-			empty
-			"""
-			while _stack.size() > 1:
-				pop()
-
-			return _stack.pop_back()
-
 	var _result := Exp.new(Exp.Type.LIST, [])
 
 	var _stack := Stack.new()
@@ -507,6 +534,12 @@ class Parser:
 			return Result.err(Error.Code.DEPTH_NOT_ZERO)
 
 		return Result.ok(_stack.finish())
+
+class Evaluator:
+	var _depth: int = 0
+
+	func run(e: Exp) -> void:
+		pass
 
 ###############################################################################
 # Builtin functions                                                           #

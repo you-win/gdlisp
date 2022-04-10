@@ -29,7 +29,7 @@ func after_all():
 var p: Parser
 
 func test_stack():
-	var stack := Parser.Stack.new()
+	var stack := Stack.new()
 
 	if not assert_eq(stack.size(), 0):
 		return
@@ -82,7 +82,7 @@ func test_atom():
 
 	var num_atom: Exp = p._atom("12")
 
-	assert_eq(num_atom.value(), 12)
+	assert_eq(num_atom.value(), 12.0)
 
 	var sym_atom: Exp = p._atom("hello world")
 
@@ -190,7 +190,6 @@ func test_simple_double_root_level():
 
 	var root_val = root.value()
 
-	# TODO broken
 	if not assert_eq(root_val.size(), 2):
 		return
 
@@ -207,3 +206,23 @@ func test_simple_double_root_level():
 
 	assert_eq(val[0].value(), "print")
 	assert_eq(val[1].value(), "world hello")
+
+func test_empty():
+	var input := ["(", ")"]
+
+	var res = p.run(input)
+
+	if not assert_true(res.is_ok()):
+		return
+
+	var e: Exp = res.unwrap()
+
+	var val: Array = e.value()
+
+	assert_eq(val.size(), 1)
+
+	e = val[0]
+
+	val = e.value()
+
+	assert_eq(val.size(), 0)
