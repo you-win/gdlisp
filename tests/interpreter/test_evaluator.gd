@@ -42,7 +42,7 @@ func test_hello_world():
 	
 	assert_null(res)
 
-func test_add_1_2_pass():
+func test_add_1_2():
 	var e := Exp.new(Exp.Type.LIST, [
 		Exp.new(Exp.Type.SYM, "+"),
 		Exp.new(Exp.Type.NUM, 1.0),
@@ -52,6 +52,19 @@ func test_add_1_2_pass():
 	var res = evaluator.run(Exp.new(Exp.Type.LIST, [e]))
 	
 	assert_eq(res, 3.0)
+
+func test_add_1_2_3_4():
+	var e := Exp.new(Exp.Type.LIST, [
+		Exp.new(Exp.Type.SYM, "+"),
+		Exp.new(Exp.Type.NUM, 1.0),
+		Exp.new(Exp.Type.NUM, 2.0),
+		Exp.new(Exp.Type.NUM, 3.0),
+		Exp.new(Exp.Type.NUM, 4.0)
+	])
+
+	var res = evaluator.run(Exp.new(Exp.Type.LIST, [e]))
+	
+	assert_eq(res, 10.0)
 
 func test_minus_10_100():
 	var e := Exp.new(Exp.Type.LIST, [
@@ -63,3 +76,15 @@ func test_minus_10_100():
 	var res = evaluator.run(Exp.new(Exp.Type.LIST, [e]))
 	
 	assert_eq(res, -90.0)
+
+func test_minus_10_10_10():
+	var e := Exp.new(Exp.Type.LIST, [
+		Exp.new(Exp.Type.SYM, "-"),
+		Exp.new(Exp.Type.NUM, 10.0),
+		Exp.new(Exp.Type.NUM, 10.0),
+		Exp.new(Exp.Type.NUM, 10.0)
+	])
+
+	var res = evaluator.run(Exp.new(Exp.Type.LIST, [e]))
+	
+	assert_eq(res, -10.0)

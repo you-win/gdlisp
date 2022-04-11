@@ -74,38 +74,79 @@ class Error:
 ###############################################################################
 
 class ScopeBuiltins:
-	static func plus(a, b):
-		return a + b
+	static func plus(a: Array):
+		if a.size() < 2:
+			return a[0]
 
-	static func minus(a, b):
-		return a - b
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result += i
+		return result
 
-	static func multiply(a, b):
-		return a * b
+	static func minus(a: Array):
+		if a.size() < 2:
+			return -a[0]
 
-	static func divide(a, b):
-		return a / b
-
-	static func equals(a, b):
-		return a == b
-
-	static func not_equals(a, b):
-		return a != b
-
-	static func less_than(a, b):
-		return a < b
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result -= i
+		return result
 	
-	static func less_than_equal_to(a, b):
-		return a <= b
+	static func multiply(a: Array):
+		if a.size() < 2:
+			return 0
+		
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result *= i
+		return result
+	
+	static func divide(a: Array):
+		if a.size() < 2:
+			return 0
+		
+		var result = a[0]
+		for i in a.slice(1, a.size() - 1):
+			result /= i
+		return result
 
-	static func greater_than(a, b):
-		return a > b
+	static func equals(a: Array):
+		if a.size() != 2:
+			return false
+		return a[0] == a[1]
 
-	static func greater_than_equal_to(a, b):
-		return a >= b
-
-	static func print(a):
-		print(a)
+	static func not_equals(a: Array):
+		if a.size() != 2:
+			return false
+		return a[0] != a[1]
+	
+	static func less_than(a: Array):
+		if a.size() != 2:
+			return false
+		return a[0] < a[1]
+	
+	static func less_than_equal_to(a: Array):
+		if a.size() != 2:
+			return false
+		return a[0] <= a[1]
+	
+	static func greater_than(a: Array):
+		if a.size() != 2:
+			return false
+		return a[0] > a[1]
+	
+	static func greater_than_equal_to(a: Array):
+		if a.size() != 2:
+			return false
+		return a[0] >= a[1]
+	
+	static func print(a: Array):
+		var result: String = ""
+		if a.size() < 1:
+			return result
+		for i in a:
+			result += str(i)
+		print(result)
 
 var global_scope_builtins := {
 	#region Operators
@@ -740,7 +781,7 @@ class Evaluator:
 							_is_valid = false
 							return null
 		
-						return procedure.call_funcv(args)
+						return procedure.call_func(args)
 
 
 ###############################################################################

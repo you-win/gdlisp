@@ -31,52 +31,52 @@ var ge = Gdlisp.new().global_scope_builtins
 func test_plus():
 	if not assert_true(ge.has("+")):
 		return
-	assert_eq(ge["+"].call_funcv([1, 2]), 3)
+	assert_eq(ge["+"].call_func([1, 2]), 3)
 
 func test_minus():
 	if not assert_true(ge.has("-")):
 		return
-	assert_eq(ge["-"].call_funcv([1, 2]), -1)
+	assert_eq(ge["-"].call_func([1, 2]), -1)
 
 func test_multiply():
 	if not assert_true(ge.has("*")):
 		return
-	assert_eq(ge["*"].call_funcv([2, 3]), 6)
+	assert_eq(ge["*"].call_func([2, 3]), 6)
 
 func test_divide():
 	if not assert_true(ge.has("/")):
 		return
-	assert_eq(ge["/"].call_funcv([6, 3]), 2)
+	assert_eq(ge["/"].call_func([6, 3]), 2)
 
 func test_equals():
 	if not assert_true(ge.has("==")):
 		return
-	assert_true(ge["=="].call_funcv([1, 1]))
+	assert_true(ge["=="].call_func([1, 1]))
 
 func test_not_equals():
 	if not assert_true(ge.has("!=")):
 		return
-	assert_true(ge["!="].call_funcv([1, 2]))
+	assert_true(ge["!="].call_func([1, 2]))
 
 func test_less_than():
 	if not assert_true(ge.has("<")):
 		return
-	assert_true(ge["<"].call_funcv([1, 2]))
+	assert_true(ge["<"].call_func([1, 2]))
 
 func test_less_than_equal_to():
 	if not assert_true(ge.has("<=")):
 		return
-	assert_true(ge["<="].call_funcv([2, 2]))
+	assert_true(ge["<="].call_func([2, 2]))
 
 func test_greater_than():
 	if not assert_true(ge.has(">")):
 		return
-	assert_true(ge[">"].call_funcv([2, 1]))
+	assert_true(ge[">"].call_func([2, 1]))
 
 func test_greater_than_equal_to():
 	if not assert_true(ge.has(">=")):
 		return
-	assert_true(ge[">="].call_funcv([2, 2]))
+	assert_true(ge[">="].call_func([2, 2]))
 
 func test_true():
 	if not assert_true(ge.has("true")):
