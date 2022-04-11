@@ -10,7 +10,7 @@ func before_all():
 	pass
 
 func before_each():
-	eb = EnvBuiltins.new()
+	eb = ScopeBuiltins.new()
 
 func after_each():
 	pass
@@ -26,7 +26,7 @@ func after_all():
 # Tests                                                                       #
 ###############################################################################
 
-var eb: EnvBuiltins
+var eb: ScopeBuiltins
 
 func test_plus():
 	assert_eq(eb.plus(1, 2), 3)

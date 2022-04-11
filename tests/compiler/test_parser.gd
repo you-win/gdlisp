@@ -29,7 +29,7 @@ func after_all():
 var p: Parser
 
 func test_stack():
-	var stack := Stack.new()
+	var stack := Parser.ParserStack.new()
 
 	if not assert_eq(stack.size(), 0):
 		return

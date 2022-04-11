@@ -61,12 +61,14 @@ const Error = Gdlisp.Error
 
 #region Model
 
-const EnvBuiltins = Gdlisp.EnvBuiltins
+const ScopeBuiltins = Gdlisp.ScopeBuiltins
 
 const GdlArray = Gdlisp.GdlArray
 const GdlDictionary = Gdlisp.GdlDictionary
 
 const Stack = Gdlisp.Stack
+
+const Scope = Gdlisp.Scope
 
 const Exp = Gdlisp.Exp
 
@@ -76,5 +78,11 @@ const Exp = Gdlisp.Exp
 
 const Tokenizer = Gdlisp.Tokenizer
 const Parser = Gdlisp.Parser
+
+#endregion
+
+#region Interpreter
+
+const Evaluator = Gdlisp.Evaluator
 
 #endregion

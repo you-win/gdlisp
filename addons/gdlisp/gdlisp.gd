@@ -73,7 +73,7 @@ class Error:
 # Model                                                                       #
 ###############################################################################
 
-class EnvBuiltins:
+class ScopeBuiltins:
 	static func plus(a, b):
 		return a + b
 
@@ -107,19 +107,19 @@ class EnvBuiltins:
 	static func print(a):
 		print(a)
 
-var global_env := {
+var global_scope_builtins := {
 	#region Operators
 
-	"+": funcref(EnvBuiltins, "plus"),
-	"-": funcref(EnvBuiltins, "minus"),
-	"*": funcref(EnvBuiltins, "multiply"),
-	"/": funcref(EnvBuiltins, "divide"),
-	"==": funcref(EnvBuiltins, "equals"),
-	"!=": funcref(EnvBuiltins, "not_equals"),
-	"<": funcref(EnvBuiltins, "less_than"),
-	"<=": funcref(EnvBuiltins, "less_than_equal_to"),
-	">": funcref(EnvBuiltins, "greater_than"),
-	">=": funcref(EnvBuiltins, "greater_than_equal_to"),
+	"+": funcref(ScopeBuiltins, "plus"),
+	"-": funcref(ScopeBuiltins, "minus"),
+	"*": funcref(ScopeBuiltins, "multiply"),
+	"/": funcref(ScopeBuiltins, "divide"),
+	"==": funcref(ScopeBuiltins, "equals"),
+	"!=": funcref(ScopeBuiltins, "not_equals"),
+	"<": funcref(ScopeBuiltins, "less_than"),
+	"<=": funcref(ScopeBuiltins, "less_than_equal_to"),
+	">": funcref(ScopeBuiltins, "greater_than"),
+	">=": funcref(ScopeBuiltins, "greater_than_equal_to"),
 
 	#endregion
 
@@ -132,7 +132,7 @@ var global_env := {
 
 	#region Builtin funcs
 
-	"print": funcref(EnvBuiltins, "print"),
+	"print": funcref(ScopeBuiltins, "print"),
 	"self": self,
 	
 	#endregion
@@ -196,37 +196,25 @@ class Stack:
 	
 	var is_invalid := false
 
-	func push(e: Exp) -> void:
+	func push(e) -> void:
 		"""
-		Pushes an expression onto the stack. Depending on the expression type,
-		the expression is either appended to the last element or appended
-		to the stack
+		Pushes an element to the back of the stack
 		"""
-		if e.type == Exp.Type.LIST:
-			_stack.push_back(e)
-		else:
-			back().append(e)
+		_stack.push_back(e)
 
-	func pop() -> Exp:
+	func pop():
 		"""
-		Pops the last expression from the stack if there are at least 2 items
-
-		After the expression is popped, it is added to the new last expression
+		Pops an element from the stack if possible or returns null
 		"""
 		if _stack.size() < 1:
 			printerr("Invalid pop, nothing on stack")
 			return null
 
-		var e: Exp = _stack.pop_back()
-		var parent: Exp = back()
-		if parent:
-			if not parent.append(e) == OK:
-				is_invalid = true
-		return e
+		_stack.pop_back()
 
-	func back() -> Exp:
+	func back():
 		"""
-		Returns the last expression on the stack or null if there is no expression
+		Returns the last element on the stack or null if there is no element
 
 		Does not use the builtin back() function to avoid stderr logs
 		"""
@@ -238,7 +226,7 @@ class Stack:
 		"""
 		return _stack.size()
 
-	func finish() -> Exp:
+	func finish():
 		"""
 		Pops everything from the stack so that the stack is completely
 		empty
@@ -247,6 +235,46 @@ class Stack:
 			pop()
 
 		return _stack.pop_back()
+
+class Scope:
+	var _inner := {}
+	var _outer: Scope
+
+	func _init(outer: Scope = null, var_names: Array = [], var_values: Array = []) -> void:
+		if outer:
+			_outer = outer
+		
+		if var_names.size() != var_values.size():
+			printerr("Input variable names do not match values")
+			return
+
+		for i in var_names.size():
+			_inner[var_names[i]] = var_values[i]
+
+	# TODO this uses recursion
+	func find(key: String):
+		"""
+		Finds a value in the current or outer scopes
+		"""
+		return _inner.get(key, _outer.find(key) if _outer else null)
+
+	func add(key: String, value) -> void:
+		"""
+		Add a key/value to the current scope
+		"""
+		_inner[key] = value
+
+	# TODO this uses recursion
+	func set_existing_value(key: String, value) -> bool:
+		"""
+		Try and set 
+		"""
+		if key in _inner:
+			_inner[key] = value
+			return true
+		elif _outer:
+			return _outer.set_existing_value(key, value)
+		return false
 
 class Exp:
 	enum Type {
@@ -463,9 +491,37 @@ class Tokenizer:
 		return Result.ok(_result)
 
 class Parser:
+	class ParserStack extends Stack:
+		func push(e: Exp) -> void:
+			"""
+			Pushes an expression onto the stack. Depending on the expression type,
+			the expression is either appended to the last element or appended
+			to the stack
+			"""
+			if e.type == Exp.Type.LIST:
+				_stack.push_back(e)
+			else:
+				back().append(e)
+		
+		func pop() -> Exp:
+			"""
+			Pops the last expression from the stack if there are at least 2 items
+
+			After the expression is popped, it is added to the new last expression
+			"""
+			if _stack.size() < 1:
+				printerr("Invalid pop, nothing on stack")
+				return null
+	
+			var e: Exp = _stack.pop_back()
+			var parent: Exp = back()
+			if parent:
+				if not parent.append(e) == OK:
+					is_invalid = true
+			return e
 	var _result := Exp.new(Exp.Type.LIST, [])
 
-	var _stack := Stack.new()
+	var _stack := ParserStack.new()
 
 	var _depth: int = 0
 	
@@ -535,11 +591,157 @@ class Parser:
 
 		return Result.ok(_stack.finish())
 
-class Evaluator:
-	var _depth: int = 0
+###############################################################################
+# Interpreter                                                                 #
+###############################################################################
 
-	func run(e: Exp) -> void:
-		pass
+# TODO still uses recursion
+class Evaluator:
+	class Procedure:
+		var _arg_names := []
+		var _expression: Exp
+		var _scope: Scope
+
+		func _init(arg_names: Array, expression: Exp, scope: Scope) -> void:
+			_arg_names.append_array(arg_names)
+			_expression = expression
+			_scope = scope
+
+		func call_func(arg_values: Array):
+			for i in _arg_names.size():
+				_scope.add(_arg_names[i], arg_values[i])
+
+			return _scope.find(EVALUATOR_SCOPE_NAME).run(_expression, _scope)
+
+	const EVALUATOR_SCOPE_NAME := "__evaluator__"
+	const INVALID_STATE := "Invalid state"
+	var _is_valid := true
+
+	var _scope: Scope
+
+	func _init(scope: Scope) -> void:
+		_scope = scope
+		_scope.add(EVALUATOR_SCOPE_NAME, self)
+
+	static func _print_arg_mismatch(op: String, expected: int, actual: int) -> void:
+		printerr("%s statement expected %d, got %d" % [op, expected, actual])
+
+	func _has_exact_args(list_size: int, expected_size: int) -> bool:
+		if list_size != expected_size:
+			return false
+		return true
+
+	func _has_enough_args(list_size: int, min_size: int) -> bool:
+		if list_size < min_size:
+			return false
+		return true
+
+	# TODO this is recursive
+	func run(expression: Exp, scope: Scope = null):
+		"""
+		Completely evaluate the given Expression
+
+		The first Expression will be guaranteed to be a list
+		"""
+		if not _is_valid:
+			return INVALID_STATE
+
+		if not scope:
+			scope = _scope
+
+		var value = expression.value()
+		
+		match expression.type:
+			Exp.Type.SYM:
+				var scope_value = scope.find(value)
+
+				if scope_value == null:
+					printerr("Undefined symbol %s" % str(value))
+					_is_valid = false
+					continue
+				return scope_value
+			Exp.Type.STR, Exp.Type.NUM:
+				return value
+			Exp.Type.LIST:
+				if value.size() == 0:
+					return null
+
+				match value[0].value():
+					"if": # (if (test) (then) (else))
+						if not _has_exact_args(value.size(), 4):
+							_print_arg_mismatch("if", 4, value.size())
+							return
+						
+						# 1 - test
+						# 2 - then
+						# 3 - else
+						return run(value[2] if run(value[1], scope) else value[3], scope)
+					"do": # (do (...))
+						if not _has_enough_args(value.size(), 2):
+							_print_arg_mismatch("do", 2, value.size())
+							return
+
+						return run(value.slice(1, value.size()), Scope.new(scope))
+					"while": # (while (test) (then))
+						if not _has_enough_args(value.size(), 3):
+							_print_arg_mismatch("while", 3, value.size())
+							return
+
+						var while_val
+						while run(value[1], scope):
+							for s in value.slice(2, value.size()):
+								while_val = run(s, scope)
+
+						return while_val
+					"for": # (for counter [list] (then))
+						pass
+					"def": # (def name value) Set a new value in the current scope
+						if not _has_exact_args(value.size(), 3):
+							_print_arg_mismatch("def", 3, value.size())
+							return
+
+						scope.add(value[1].value(), run(value[2], scope))
+					"=": # (= name value) Set a value in the current or higher scope
+						if not _has_exact_args(value.size(), 3):
+							_print_arg_mismatch("=", 3, value.size())
+							return
+
+						if not scope.set_existing_value(value[1], run(value[2], scope)):
+							printerr("Tried to set a non-existent variable %s" % value[1])
+							return
+					"list": # (list (values ...))
+						pass
+					"dict": # (dict (k v ...))
+						pass
+					"lam": # (lam [args] ()...)
+						pass
+					"macro": # (macro [args] () ...)
+						pass
+					"raw": # (raw object method [params])
+						pass
+					"expr": # (expr code) Use advanced-expression-gd to run raw code
+						pass
+					"label": # (label name)
+						pass
+					"goto": # (godot label)
+						pass
+					"import": # (import path)
+						pass
+					_:
+						var procedure = run(value[0], scope)
+						if not procedure is FuncRef and not procedure is Procedure:
+							return procedure
+		
+						var args := []
+						for arg in value.slice(1, value.size() - 1, 1, true):
+							args.append(run(arg, scope))
+		
+						if procedure is String:
+							_is_valid = false
+							return null
+		
+						return procedure.call_funcv(args)
+
 
 ###############################################################################
 # Builtin functions                                                           #

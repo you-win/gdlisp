@@ -26,7 +26,7 @@ func after_all():
 # Tests                                                                       #
 ###############################################################################
 
-var ge = Gdlisp.new().global_env
+var ge = Gdlisp.new().global_scope_builtins
 
 func test_plus():
 	if not assert_true(ge.has("+")):
@@ -95,4 +95,4 @@ func test_print():
 func test_self():
 	if not assert_true(ge.has("self")):
 		return
-	assert_not_null(ge["self"].global_env)
+	assert_not_null(ge["self"].global_scope_builtins)
