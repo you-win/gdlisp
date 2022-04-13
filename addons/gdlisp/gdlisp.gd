@@ -36,7 +36,7 @@ class Error:
 	enum Code {
 		NONE = 0,
 
-		#region Compiler
+		#region Pre
 
 		# Preprocessor
 		INVALID_PREPROCESSOR_REPLACEMENTS,
@@ -49,6 +49,13 @@ class Error:
 
 		# Parser
 		DEPTH_NOT_ZERO,
+
+		#endregion
+
+		#region Post
+
+		# Transpiler
+		ADVANCED_EXPRESSION_NOT_FOUND,
 
 		#endregion
 	}
@@ -357,7 +364,7 @@ class Exp:
 		return OK
 
 ###############################################################################
-# Compiler                                                                    #
+# Pre                                                                         #
 ###############################################################################
 
 class Preprocessor:
@@ -633,26 +640,90 @@ class Parser:
 		return Result.ok(_stack.finish())
 
 ###############################################################################
-# Interpreter                                                                 #
+# Post                                                                        #
 ###############################################################################
+
+class Transpiler:
+	var _has_adv_exp := false
+
+	func _init() -> void:
+		var file := File.new()
+		if file.file_exists("res://addons/advanced-expression/advanced_expression.gd"):
+			_has_adv_exp = true
+
+	func run(ast: Exp) -> Result:
+		if not _has_adv_exp:
+			return Result.err(Error.Code.ADVANCED_EXPRESSION_NOT_FOUND)
+
+		return Result.ok()
 
 # TODO still uses recursion
 class Evaluator:
-	class Procedure:
+	class StoredExp:
 		var _arg_names := []
-		var _expression: Exp
+		var _exp: Exp
 		var _scope: Scope
 
 		func _init(arg_names: Array, expression: Exp, scope: Scope) -> void:
 			_arg_names.append_array(arg_names)
-			_expression = expression
+			_exp = expression
 			_scope = scope
 
-		func call_func(arg_values: Array):
-			for i in _arg_names.size():
-				_scope.add(_arg_names[i], arg_values[i])
+		func call_func(input: Array):
+			"""
+			Purposely mimics the function signature for a FuncRef
+			"""
+			printerr("Not yet implemented")
+			return
 
-			return _scope.find(EVALUATOR_SCOPE_NAME).run(_expression, _scope)
+		func get_arg_names() -> Array:
+			return _arg_names
+
+	class Procedure extends StoredExp:
+		func _init(a: Array, e: Exp, s: Scope).(a, e, s) -> void:
+			pass
+		
+		func call_func(input: Array):
+			if input.size() != _arg_names.size():
+				return
+
+			for idx in _arg_names.size():
+				_scope.add(_arg_names[idx], input[idx])
+
+			return _scope.find(EVALUATOR_SCOPE_NAME).run(_exp, _scope)
+
+	class Macro extends StoredExp:
+		func _init(a: Array, e: Exp, s: Scope).(a, e, s) -> void:
+			pass
+		
+		func call_func(input: Array) -> Exp:
+			"""
+			Takes an array of Exp objects. The amount of args must match the size
+			of _arg_names.
+
+			Raw expressions are added to the scope (not the raw value) and then
+			the evaluator is run
+			"""
+			var e := Exp.new(Exp.Type.LIST, [])
+
+			if input.size() != _arg_names.size():
+				return e
+
+			var evalulator: Evaluator = _scope.find(EVALUATOR_SCOPE_NAME)
+
+			for idx in _arg_names.size():
+				# Exp objects are added, not their raw values
+				_scope.add(_arg_names[idx], input[idx])
+
+			for expression in _exp.value():
+				var val = expression.value()
+				if val is Array:
+					for v in val:
+						e.append(evalulator.run(v, _scope))
+				else:
+					e.append(evalulator.run(expression, _scope))
+
+			return e
 
 	const EVALUATOR_SCOPE_NAME := "__evaluator__"
 	const INVALID_STATE := "Invalid state"
@@ -667,12 +738,12 @@ class Evaluator:
 	static func _print_arg_mismatch(op: String, expected: int, actual: int) -> void:
 		printerr("%s statement expected %d, got %d" % [op, expected, actual])
 
-	func _has_exact_args(list_size: int, expected_size: int) -> bool:
+	static func _has_exact_args(list_size: int, expected_size: int) -> bool:
 		if list_size != expected_size:
 			return false
 		return true
 
-	func _has_enough_args(list_size: int, min_size: int) -> bool:
+	static func _has_enough_args(list_size: int, min_size: int) -> bool:
 		if list_size < min_size:
 			return false
 		return true
@@ -707,57 +778,124 @@ class Evaluator:
 				if value.size() == 0:
 					return null
 
-				match value[0].value():
+				var list: Array = value
+
+				match list[0].value():
 					"if": # (if (test) (then) (else))
-						if not _has_exact_args(value.size(), 4):
-							_print_arg_mismatch("if", 4, value.size())
+						if not _has_exact_args(list.size(), 4):
+							_print_arg_mismatch("if", 4, list.size())
 							return
 						
 						# 1 - test
 						# 2 - then
 						# 3 - else
-						return run(value[2] if run(value[1], scope) else value[3], scope)
+						return run(list[2] if run(list[1], scope) else list[3], scope)
 					"do": # (do (...))
-						if not _has_enough_args(value.size(), 2):
-							_print_arg_mismatch("do", 2, value.size())
+						if not _has_enough_args(list.size(), 2):
+							_print_arg_mismatch("do", 2, list.size())
 							return
 
-						return run(value.slice(1, value.size()), Scope.new(scope))
+						return run(Exp.new(Exp.Type.LIST, list.slice(1, list.size())), Scope.new(scope))
 					"while": # (while (test) (then))
-						if not _has_enough_args(value.size(), 3):
-							_print_arg_mismatch("while", 3, value.size())
+						if not _has_enough_args(list.size(), 3):
+							_print_arg_mismatch("while", 3, list.size())
 							return
 
 						var while_val
-						while run(value[1], scope):
-							for s in value.slice(2, value.size()):
+						while run(list[1], scope):
+							for s in list.slice(2, list.size()):
 								while_val = run(s, scope)
 
 						return while_val
 					"for": # (for counter [list] (then))
 						pass
 					"def": # (def name value) Set a new value in the current scope
-						if not _has_exact_args(value.size(), 3):
-							_print_arg_mismatch("def", 3, value.size())
+						if not _has_exact_args(list.size(), 3):
+							_print_arg_mismatch("def", 3, list.size())
 							return
 
-						scope.add(value[1].value(), run(value[2], scope))
+						scope.add(list[1].value(), run(list[2], scope))
 					"=": # (= name value) Set a value in the current or higher scope
-						if not _has_exact_args(value.size(), 3):
-							_print_arg_mismatch("=", 3, value.size())
+						if not _has_exact_args(list.size(), 3):
+							_print_arg_mismatch("=", 3, list.size())
 							return
 
-						if not scope.set_existing_value(value[1], run(value[2], scope)):
-							printerr("Tried to set a non-existent variable %s" % value[1])
+						if not scope.set_existing_value(list[1], run(list[2], scope)):
+							printerr("Tried to set a non-existent variable %s" % list[1])
 							return
 					"list": # (list (values ...))
-						pass
+						var array := GdlArray.new()
+						if list.size() >= 2:
+							for item in list.slice(1, list.size() - 1, 1, true):
+								array.append(run(item, scope))
+						
+						return array
 					"dict": # (dict (k v ...))
-						pass
+						var dict := GdlDictionary.new()
+						if list.size() >= 2:
+							if not (list.size() - 1) % 2 == 0:
+								printerr("Unbalanced key/value pairs for dict")
+								return
+						
+						var idx: int = 1
+						while idx < list.size():
+							dict.set(run(list[idx], scope), run(list[idx + 1], scope))
+							idx + 2
+
+						return dict
 					"lam": # (lam [args] ()...)
-						pass
+						if not _has_enough_args(list.size(), 3):
+							_print_arg_mismatch("lam", 3, list.size())
+							return
+
+						var arg_names = list[1].value()
+						if not arg_names is Array:
+							printerr("lam expects a list of parameter names")
+							return
+
+						# Strip out the (list ...) part of the args
+						if arg_names.size() == 1:
+							arg_names = []
+						else:
+							arg_names = arg_names.slice(1, arg_names.size() - 1)
+							for i in arg_names.size():
+								# Obtain an array of Strings
+								arg_names[i] = arg_names[i].value()
+
+						var new_exp := Exp.new(Exp.Type.LIST, [Exp.new(Exp.Type.SYM, "do")])
+						for e in list.slice(2, list.size() - 1, 1, true):
+							new_exp.append(e)
+
+						return Procedure.new(arg_names, new_exp, Scope.new(scope))
 					"macro": # (macro [args] () ...)
-						pass
+						if not _has_enough_args(list.size(), 3):
+							_print_arg_mismatch("macro", 3, list.size())
+							return
+
+						var arg_names = list[1].value()
+						if not arg_names is Array:
+							printerr("macro expects a list of parameter names")
+							return
+
+						# Strip out the (list ...) part of the args
+						if arg_names.size() == 1:
+							arg_names = []
+						else:
+							arg_names = arg_names.slice(1, arg_names.size() - 1)
+							for i in arg_names.size():
+								# Obtain an array of Strings
+								arg_names[i] = arg_names[i].value()
+
+						var new_exp := Exp.new(Exp.Type.LIST, [])
+						for e in list.slice(2, list.size() - 1, 1, true):
+							new_exp.append(e)
+
+						return Macro.new(arg_names, new_exp, Scope.new(scope))
+					"quote": # (quote ())
+						if not _has_exact_args(list.size(), 2):
+							_print_arg_mismatch("quote", 2, list.size())
+							return
+						return list[1]
 					"raw": # (raw object method [params])
 						pass
 					"expr": # (expr code) Use advanced-expression-gd to run raw code
@@ -769,12 +907,18 @@ class Evaluator:
 					"import": # (import path)
 						pass
 					_:
-						var procedure = run(value[0], scope)
-						if not procedure is FuncRef and not procedure is Procedure:
+						var procedure = run(list[0], scope)
+						if procedure is Macro:
+							procedure = Procedure.new(
+								procedure.get_arg_names(),
+								procedure.call_func(list.slice(1, list.size() - 1, 1, true)),
+								scope
+							)
+						elif not procedure is FuncRef and not procedure is Procedure:
 							return procedure
 		
 						var args := []
-						for arg in value.slice(1, value.size() - 1, 1, true):
+						for arg in list.slice(1, list.size() - 1, 1, true):
 							args.append(run(arg, scope))
 		
 						if procedure is String:
