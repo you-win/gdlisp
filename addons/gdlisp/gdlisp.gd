@@ -239,6 +239,24 @@ class GdlDictionary extends GdlCollection:
 	func duplicate() -> GdlDictionary:
 		return GdlDictionary.new(.duplicate())
 
+class GdlClass:
+	var _name := ""
+	var _scope: Scope
+	var _methods := {} # Method: String -> Exp
+
+	func _init(p_name: String, scope: Scope) -> void:
+		_name = p_name
+		_scope = scope
+
+	func has_method(method: String) -> bool:
+		if not .has_method(method) and not _methods.has(method):
+			return false
+		return true
+
+	func callv(method: String, args: Array):
+		# TODO need a way to pass args
+		return _scope.find(Evaluator.EVALUATOR_SCOPE_NAME).run(_methods[method])
+
 class Stack:
 	var _stack := [] # Exp
 	
@@ -770,7 +788,7 @@ class Evaluator:
 				if scope_value == null:
 					printerr("Undefined symbol %s" % str(value))
 					_is_valid = false
-					continue
+					return
 				return scope_value
 			Exp.Type.STR, Exp.Type.NUM:
 				return value
@@ -891,6 +909,8 @@ class Evaluator:
 							new_exp.append(e)
 
 						return Macro.new(arg_names, new_exp, Scope.new(scope))
+					"class":
+						pass
 					"quote": # (quote ())
 						if not _has_exact_args(list.size(), 2):
 							_print_arg_mismatch("quote", 2, list.size())
@@ -906,6 +926,21 @@ class Evaluator:
 						pass
 					"import": # (import path)
 						pass
+					".":
+						if not _has_enough_args(list.size(), 3):
+							_print_arg_mismatch(".", 3, list.size())
+							return
+						
+						var object = run(list[1], scope)
+						if object == null or not object:
+							printerr("Unable to find object to call")
+							return
+
+						if not object.has_method(list[2].value()):
+							printerr("Object %s does not have method %s" % [str(object), str(list[2])])
+							return
+
+						
 					_:
 						var procedure = run(list[0], scope)
 						if procedure is Macro:

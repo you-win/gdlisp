@@ -93,6 +93,36 @@ func test_minus_10_10_10():
 
 #endregion
 
+#region Collections
+
+func test_list():
+	var e := Exp.new(
+		Exp.Type.LIST,
+		[
+			Exp.new(Exp.Type.SYM, "list")
+		]
+	)
+
+	var res = evaluator.run(Exp.new(
+		Exp.Type.LIST,
+		[
+			Exp.new(Exp.Type.SYM, "x"),
+			e
+		]
+	))
+
+	if not assert_null(res):
+		return
+
+	res = evaluator.run(Exp.new(
+		Exp.Type.LIST,
+		[
+			Exp.new(Exp.Type.SYM, ".")
+		]
+	))
+
+#endregion
+
 #region Lambdas
 
 func test_lam_add_x_y():
@@ -131,7 +161,7 @@ func test_lam_add_x_y():
 
 #region Macros
 
-func test_infix_not_wrapped():
+func test_infix():
 	var e := Exp.new(Exp.Type.LIST, [
 		Exp.new(Exp.Type.SYM, "macro"),
 		Exp.new(Exp.Type.LIST, [
