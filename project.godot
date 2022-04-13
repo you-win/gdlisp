@@ -8,43 +8,19 @@
 
 config_version=4
 
-_global_script_classes=[ {
-"base": "Reference",
-"class": "GDLisp",
-"language": "GDScript",
-"path": "res://utils/GDLisp.gd"
-}, {
-"base": "Reference",
-"class": "GDLispSyntaxDoc",
-"language": "GDScript",
-"path": "res://utils/GDLispSyntaxDoc.gd"
-}, {
-"base": "Reference",
-"class": "SaveDataUtil",
-"language": "GDScript",
-"path": "res://utils/SaveDataUtil.gd"
-}, {
-"base": "Reference",
-"class": "TestBase",
-"language": "GDScript",
-"path": "res://tests/TestBase.gd"
-} ]
-_global_script_class_icons={
-"GDLisp": "",
-"GDLispSyntaxDoc": "",
-"SaveDataUtil": "",
-"TestBase": ""
-}
-
 [application]
 
 config/name="GDLisp"
-run/main_scene="res://screens/MainScreen.tscn"
+run/main_scene="res://repl/repl.tscn"
 config/icon="res://assets/icon.png"
 
-[autoload]
+[debug]
 
-AppManager="*res://utils/AppManager.gd"
+gdscript/warnings/return_value_discarded=false
+
+[editor_plugins]
+
+enabled=PoolStringArray( "res://addons/gut/plugin.cfg" )
 
 [input]
 
